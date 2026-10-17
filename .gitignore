@@ -1,0 +1,9 @@
+# Rust / Tauri 构建产物
+src-tauri/target/
+# Tauri 自动生成的 schema
+src-tauri/gen/schemas/
+# 工作区本地辅助文件（验证探针等，不属于项目）
+.workbuddy/
+# 系统杂项
+Thumbs.db
+.DS_Store

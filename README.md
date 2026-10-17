@@ -1,0 +1,76 @@
+# TodayTrace
+
+像记事本一样轻的桌面便签工具：纯 TXT 记事 + 可点击 To-do + 全程自动留痕。Today 视图写当下，Trace 视图回看任务一生，一键导出周报月报。
+
+## 数据位置
+
+`文档\TodayTrace\`
+
+```
+TodayTrace/
+  notes/2026-10-16.txt     每天一个纯文本文件，记事本可直接打开
+  trace/snapshots.jsonl    任务快照流水账（自动追加，含 .prev 回退副本）
+  export/                  周报 / 月报导出目录（Markdown + HTML）
+```
+
+TXT 内语法：`- [ ] 任务` / `- [x] 完成`，两空格缩进为子任务，`# 标题` 为时段标签。
+
+## 每日清空与往日导入
+
+- **业务日分界 6:00**：「今天」以凌晨 6 点划分——6 点前写的归前一天，深夜工作不被零点打断。跨分界点应用每 30 秒自动翻页到新一天的空白页（旧内容先落盘）；Trace 按天归组、周报月报统计、导入分组均使用同一分界
+- **每日一页**：Today 视图一天一个 txt，当天没写过就是空白
+- **右键导入**：编辑器右键 →「导入往日未完成…」→ 按天分组列出往日未完成任务（已完成的、已删除的不出现），勾选带回今天
+- 导入**沿用原任务身份**：Trace 里仍是同一条任务的一生（时间线多一条「导入 · 来自 某日」），周报月报不计为新创建、只计入「进行中」
+
+## 极简视图
+
+- 启动即一块纯输入区：侧栏隐藏（贴左缘 14px 热区呼出，作为浮层滑入）、日期与进度条隐藏（悬停顶部渐显）、底部操作提示隐藏（仅悬停提示文字本身才浮现）——默认视野内除空复选框外无任何文字，打字时零干扰
+- **无边框极简模式**：默认隐藏系统标题栏，顶部悬停日期区或窗口顶边可拖动（双击最大化），右上角悬停浮现最小化 / 关闭按钮；设置页可关闭此模式换回传统标题栏
+- **可缩到便签大小**：窗口最小 280×200；窄窗口（≤620px）自动收紧边距、Trace 日期栏折叠为横向、报告改单列，内容始终填满无空隙
+
+## 设置页
+
+侧栏齿轮打开，分三区，外观与窗口项即时生效：
+
+- **外观**：主题（跟随系统 / 浅色 / 深色，不再强制跟随系统）、正文字体（无衬线 / 衬线 / 等宽）、正文字号（12–20px 滑杆，带实时预览）
+- **窗口与系统**：窗口置顶（Always on Top）、隐藏标题栏（无边框极简，即时生效）、托盘常驻（点关闭缩到系统托盘，左键托盘图标恢复，菜单含显示 / 退出）、开机自启（写入当前用户注册表 Run 键，无需管理员）
+- **存储**：自定义存储目录（填绝对路径即把 notes / trace / export 落到该目录，保存后自动重载；「恢复默认」回到 `文档\TodayTrace`，切换不删除旧数据）
+- 全部设置存于 `%APPDATA%\TodayTrace\config.json`，键值合并写入，与数据目录解耦；置顶与托盘在应用启动时自动恢复
+
+## 开发构建
+
+依赖：Rust stable（x86_64-pc-windows-gnu）+ w64devkit（便携 MinGW，位于 `~/.workbuddy/binaries/mingw64/w64devkit`），无需 MSVC 与管理员权限，前端为纯静态文件。
+
+```bash
+export PATH="$HOME/.cargo/bin:$HOME/.workbuddy/binaries/mingw64/w64devkit/bin:$PATH"
+export RUSTFLAGS="-Clink-self-contained=n -Cdlltool=C:/Users/huang/.workbuddy/binaries/mingw64/w64devkit/bin/dlltool.exe"
+```
+
+工具链说明：rustup 自包含组件缺 `as.exe`（dlltool 依赖）；w64devkit 缺 `libgcc_eh.a`（已在 `lib/gcc/x86_64-w64-mingw32/16.2.0/` 下用 libgcc.a 复制补齐）。RUSTFLAGS 关闭 Rust 自包含链接，CRT 与导入库全部由 w64devkit 提供。
+
+窗口操作权限：`capabilities/default.json` 在 `core:default` 之外显式放行 `core:window:allow-minimize / allow-close / allow-set-decorations / allow-start-dragging / allow-internal-toggle-maximize`（Tauri 2 默认权限集仅含查询类操作，无边框窗控与拖动必需这几项写权限）。
+
+```bash
+cd src-tauri
+cargo build          # 调试构建，产物在 target/debug/todaytrace.exe
+cargo build --release  # 发布构建（opt-level=s + lto + strip）
+cargo run            # 直接启动
+```
+
+## 架构
+
+| 层 | 位置 | 职责 |
+|---|---|---|
+| 数据层 | `src-tauri/src/store.rs` | 数据目录解析、原子写（tmp + rename）、快照追加与启动校验、受限路径写、设置键值合并读写、注册表自启 |
+| 命令层 | `src-tauri/src/main.rs` | Tauri commands：app_init / load_day / save_day / append_events / load_events / list_days / save_file / get_settings / set_setting；系统托盘与窗口置顶、关闭驻留拦截 |
+| 存储适配 | `src/core.js` | Tauri 命令调用与浏览器预览模式（localStorage）双通道 |
+| 编辑器 | `src/editor.js` | 行级编辑、隐形任务 ID 与身份匹配、快照事件生成、防抖落盘 |
+| Trace | `src/trace.js` | 按天回看任务一生（时间线） |
+| 报告 | `src/report.js` | 周报 / 月报汇总，Markdown + HTML 双格式导出 |
+
+## 可靠性机制
+
+- `notes/*.txt` 原子写：任何时刻磁盘上都是完整的旧版或新版
+- `snapshots.jsonl` 追加写 + 启动校验：末尾撕裂行自动截断，`.prev` 为上一份副本
+- 写入顺序：先落状态（txt），后记历史（快照）——崩溃最坏损失一笔历史事件，当前状态始终正确
+- 全库 UTF-8（无 BOM），与记事本 / VS Code 双向兼容

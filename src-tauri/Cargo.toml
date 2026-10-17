@@ -1,0 +1,26 @@
+[package]
+name = "todaytrace"
+version = "0.2.0"
+edition = "2021"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+# 同上：tauri-build 的 build-dependency 图里也走一遍 schemars 0.8，需单独强制 std
+indexmap = { version = "1.9.3", features = ["std"] }
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+chrono = "0.4"
+dirs = "5"
+winreg = "0.52"
+# 不直接使用：强制 indexmap 1.x 开启 std 特性，绕过其构建脚本在当前工具链下
+# std 探测静默失败导致 schemars 0.8（preserve_order）release 构建报 E0107 的问题
+indexmap = { version = "1.9.3", features = ["std"] }
+
+[profile.release]
+opt-level = "s"
+lto = true
+strip = true
+panic = "abort"
