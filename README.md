@@ -1,6 +1,6 @@
 # TodayTrace
 
-像记事本一样轻的桌面便签工具：纯 TXT 记事 + 可点击 To-do + 全程自动留痕。Today 视图写当下，Trace 视图回看任务一生，一键导出周报月报。
+ADHD 友好的「注意力 0 负荷」桌面便签：纯 TXT 记事 + 可点击 To-do + 全程自动留痕。Today 视图写当下，Trace 视图回看任务一生，一键导出周报月报。
 
 ## 设计初心：给容易分心的人
 
@@ -51,9 +51,35 @@ TXT 内语法：`- [ ] 任务` / `- [x] 完成`，两空格缩进为子任务，
 - **存储**：自定义存储目录（填绝对路径即把 notes / trace / export 落到该目录，保存后自动重载；「恢复默认」回到 `文档\TodayTrace`，切换不删除旧数据）
 - 全部设置存于 `%APPDATA%\TodayTrace\config.json`，键值合并写入，与数据目录解耦；置顶与托盘在应用启动时自动恢复
 
-## 开发构建
+## 下载
 
-依赖：Rust stable（x86_64-pc-windows-gnu）+ w64devkit（便携 MinGW，位于 `~/.workbuddy/binaries/mingw64/w64devkit`），无需 MSVC 与管理员权限，前端为纯静态文件。
+从 [Releases](https://github.com/huangxp12/todaytrace/releases) 下载 `todaytrace.exe`（约 3.4 MB，单文件免安装）：
+
+- 系统要求：Windows 10 / 11（WebView2 运行时系统自带，无需额外安装）
+- 双击即用；数据落在 `文档\TodayTrace\`，卸载即删，全程零联网
+- 实测运行内存约 36MB
+
+## 从源码构建
+
+标准 Windows 环境（MSVC 工具链，多数开发者适用）：
+
+```bash
+# 1. 安装 Rust（rustup，选默认 MSVC 工具链）
+#    https://rustup.rs ；MSVC 链接器来自 Visual Studio Build Tools（勾选「使用 C++ 的桌面开发」负载）
+# 2. 克隆并构建
+git clone https://github.com/huangxp12/todaytrace.git
+cd todaytrace/src-tauri
+cargo build --release
+# 产物：target/release/todaytrace.exe
+```
+
+前端为纯静态文件（HTML/CSS/JS），没有 npm 安装与前端构建步骤，Rust 编译时自动打包资源——装好 Rust 即可一键构建。
+
+### 本机开发环境备查（GNU 工具链方案）
+
+无 MSVC 环境时可用 w64devkit（便携 MinGW）替代，以下为已验证的配置（非一般用户必需）：
+
+依赖：Rust stable（x86_64-pc-windows-gnu）+ w64devkit（便携 MinGW，位于 `~/.workbuddy/binaries/mingw64/w64devkit`），无需管理员权限。
 
 ```bash
 export PATH="$HOME/.cargo/bin:$HOME/.workbuddy/binaries/mingw64/w64devkit/bin:$PATH"
