@@ -1,5 +1,7 @@
 # EaseDo
 
+[简体中文](README.md) | [English](README.en.md)
+
 ADHD 友好的「注意力 0 负荷」桌面便签：纯 TXT 记事 + 可点击 To-do + 全程自动留痕。Today 视图写当下，Trace 视图回看任务一生，一键导出周报月报。
 
 ## 设计初心：给容易分心的人

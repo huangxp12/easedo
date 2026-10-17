@@ -151,16 +151,17 @@ body.rail-show #rail {
   transition: background 0.12s;
 }
 .line:hover { background: var(--panel); }
-.line .txt { flex: 1; outline: none; min-height: 26px; padding: 1px 2px; word-break: break-word; white-space: pre-wrap; font-family: var(--editor-font); font-size: var(--editor-size); }
+.line .txt { flex: 1; outline: none; min-height: 1.74em; padding: 1px 2px; word-break: break-word; white-space: pre-wrap; font-family: var(--editor-font); font-size: var(--editor-size); }
 .line.todo .txt { font-size: var(--editor-size); }
 .line.text .txt, .line.empty .txt { color: var(--ink); font-size: var(--editor-size); }
 
 .check {
-  flex: 0 0 20px;
-  width: 20px; height: 20px;
-  margin-top: 4px;
+  flex: 0 0 auto;
+  font-size: var(--editor-size);
+  width: 1.34em; height: 1.34em;
+  margin-top: 0.27em;
   border: 1.5px solid var(--faint);
-  border-radius: 6.5px;
+  border-radius: 0.44em;
   background: transparent;
   cursor: pointer;
   padding: 0;
@@ -169,7 +170,7 @@ body.rail-show #rail {
 }
 .check:hover { border-color: var(--accent); }
 .check:active { transform: scale(0.9); }
-.check svg { width: 12px; height: 12px; }
+.check svg { width: 0.8em; height: 0.8em; }
 .check svg polyline {
   fill: none; stroke: #fff; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round;
   stroke-dasharray: 16; stroke-dashoffset: 16;
