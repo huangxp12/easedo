@@ -130,13 +130,13 @@ ${d.open.length ? `<ul>${opens}</ul>` : '<p class="empty">无</p>'}
       const e = new Date(m); e.setDate(m.getDate() + 6);
       start = todayStrOffset(m); end = todayStrOffset(e);
       const w = isoWeek(now);
-      title = `TodayTrace 周报 · ${w.year} 年第 ${w.week} 周`;
+      title = `EaseDo 周报 · ${w.year} 年第 ${w.week} 周`;
       fname = `周报_${w.year}-W${String(w.week).padStart(2, '0')}`;
     } else {
       start = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
       const e = new Date(now.getFullYear(), now.getMonth() + 1, 0);
       end = todayStrOffset(e);
-      title = `TodayTrace 月报 · ${now.getFullYear()} 年 ${now.getMonth() + 1} 月`;
+      title = `EaseDo 月报 · ${now.getFullYear()} 年 ${now.getMonth() + 1} 月`;
       fname = `月报_${start.slice(0, 7)}`;
     }
     const d = periodData(start, end);

@@ -1,4 +1,4 @@
-# TodayTrace
+# EaseDo
 
 ADHD 友好的「注意力 0 负荷」桌面便签：纯 TXT 记事 + 可点击 To-do + 全程自动留痕。Today 视图写当下，Trace 视图回看任务一生，一键导出周报月报。
 
@@ -6,7 +6,7 @@ ADHD 友好的「注意力 0 负荷」桌面便签：纯 TXT 记事 + 可点击 
 
 这个工具的原点是一个很简单的诉求：**写东西的时候，别让工具本身分走我的注意力。**
 
-很多待办应用对容易分心的大脑（无论是否 ADHD）反而是一种负担——打开就是满屏未读、红点、逾期警告、连续打卡，任务还没开始写，认知负荷先上来了。TodayTrace 按相反的逻辑设计：
+很多待办应用对容易分心的大脑（无论是否 ADHD）反而是一种负担——打开就是满屏未读、红点、逾期警告、连续打卡，任务还没开始写，认知负荷先上来了。EaseDo 按相反的逻辑设计：
 
 - **打开即写**：启动后视野内没有任何文字、按钮、红点。侧栏、日期、提示语全部隐藏在悬停手势后面，唯一的动作就是打字
 - **一天一页**：Today 只看今天。昨天的未完成事项不会追着你显示，需要时右键导入即可
@@ -18,10 +18,10 @@ ADHD 友好的「注意力 0 负荷」桌面便签：纯 TXT 记事 + 可点击 
 
 ## 数据位置
 
-`文档\TodayTrace\`
+`文档\EaseDo\`
 
 ```
-TodayTrace/
+EaseDo/
   notes/2026-10-16.txt     每天一个纯文本文件，记事本可直接打开
   trace/snapshots.jsonl    任务快照流水账（自动追加，含 .prev 回退副本）
   export/                  周报 / 月报导出目录（Markdown + HTML）
@@ -48,15 +48,15 @@ TXT 内语法：`- [ ] 任务` / `- [x] 完成`，两空格缩进为子任务，
 
 - **外观**：主题（跟随系统 / 浅色 / 深色，不再强制跟随系统）、正文字体（无衬线 / 衬线 / 等宽）、正文字号（12–20px 滑杆，带实时预览）
 - **窗口与系统**：窗口置顶（Always on Top）、隐藏标题栏（无边框极简，即时生效）、托盘常驻（点关闭缩到系统托盘，左键托盘图标恢复，菜单含显示 / 退出）、开机自启（写入当前用户注册表 Run 键，无需管理员）
-- **存储**：自定义存储目录（填绝对路径即把 notes / trace / export 落到该目录，保存后自动重载；「恢复默认」回到 `文档\TodayTrace`，切换不删除旧数据）
-- 全部设置存于 `%APPDATA%\TodayTrace\config.json`，键值合并写入，与数据目录解耦；置顶与托盘在应用启动时自动恢复
+- **存储**：自定义存储目录（填绝对路径即把 notes / trace / export 落到该目录，保存后自动重载；「恢复默认」回到 `文档\EaseDo`，切换不删除旧数据）
+- 全部设置存于 `%APPDATA%\EaseDo\config.json`，键值合并写入，与数据目录解耦；置顶与托盘在应用启动时自动恢复
 
 ## 下载
 
-从 [Releases](https://github.com/huangxp12/todaytrace/releases) 下载 `todaytrace.exe`（约 3.4 MB，单文件免安装）：
+从 [Releases](https://github.com/huangxp12/easedo/releases) 下载 `easedo.exe`（约 3.4 MB，单文件免安装）：
 
 - 系统要求：Windows 10 / 11（WebView2 运行时系统自带，无需额外安装）
-- 双击即用；数据落在 `文档\TodayTrace\`，卸载即删，全程零联网
+- 双击即用；数据落在 `文档\EaseDo\`，卸载即删，全程零联网
 - 实测运行内存约 36MB
 
 ## 从源码构建
@@ -67,10 +67,10 @@ TXT 内语法：`- [ ] 任务` / `- [x] 完成`，两空格缩进为子任务，
 # 1. 安装 Rust（rustup，选默认 MSVC 工具链）
 #    https://rustup.rs ；MSVC 链接器来自 Visual Studio Build Tools（勾选「使用 C++ 的桌面开发」负载）
 # 2. 克隆并构建
-git clone https://github.com/huangxp12/todaytrace.git
-cd todaytrace/src-tauri
+git clone https://github.com/huangxp12/easedo.git
+cd easedo/src-tauri
 cargo build --release
-# 产物：target/release/todaytrace.exe
+# 产物：target/release/easedo.exe
 ```
 
 前端为纯静态文件（HTML/CSS/JS），没有 npm 安装与前端构建步骤，Rust 编译时自动打包资源——装好 Rust 即可一键构建。
@@ -92,7 +92,7 @@ export RUSTFLAGS="-Clink-self-contained=n -Cdlltool=C:/Users/huang/.workbuddy/bi
 
 ```bash
 cd src-tauri
-cargo build          # 调试构建，产物在 target/debug/todaytrace.exe
+cargo build          # 调试构建，产物在 target/debug/easedo.exe
 cargo build --release  # 发布构建（opt-level=s + lto + strip）
 cargo run            # 直接启动
 ```

@@ -92,10 +92,10 @@ fn ensure_tray(app: &AppHandle, state: &State<AppState>) -> Result<(), String> {
         return Ok(());
     }
     let show_i = MenuItem::with_id(app, "show", "显示窗口", true, None::<&str>).map_err(|e| e.to_string())?;
-    let quit_i = MenuItem::with_id(app, "quit", "退出 TodayTrace", true, None::<&str>).map_err(|e| e.to_string())?;
+    let quit_i = MenuItem::with_id(app, "quit", "退出 EaseDo", true, None::<&str>).map_err(|e| e.to_string())?;
     let menu = Menu::with_items(app, &[&show_i, &quit_i]).map_err(|e| e.to_string())?;
     let mut b = tauri::tray::TrayIconBuilder::with_id("tt-tray")
-        .tooltip("TodayTrace")
+        .tooltip("EaseDo")
         .menu(&menu)
         .show_menu_on_left_click(false)
         .on_menu_event(|app, ev| match ev.id.as_ref() {
@@ -197,7 +197,7 @@ fn set_data_dir(state: State<AppState>, path: Option<String>) -> Result<serde_js
         Some(p) => {
             let pb = PathBuf::from(p);
             if !pb.is_absolute() {
-                return Err("请填写绝对路径（如 D:\\Notes\\TodayTrace）".into());
+                return Err("请填写绝对路径（如 D:\\Notes\\EaseDo）".into());
             }
             std::fs::create_dir_all(&pb).map_err(|e| format!("目录无法创建：{e}"))?;
             store::save_custom_dir(Some(&pb))?;

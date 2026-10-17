@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "TodayTrace",
+  "productName": "EaseDo",
   "version": "0.2.0",
-  "identifier": "workbuddy.todaytrace",
+  "identifier": "workbuddy.easedo",
   "build": {
     "frontendDist": "../src"
   },
@@ -10,7 +10,7 @@
     "withGlobalTauri": true,
     "windows": [
       {
-        "title": "TodayTrace",
+        "title": "EaseDo",
         "width": 980,
         "height": 700,
         "minWidth": 280,

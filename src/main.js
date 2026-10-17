@@ -137,8 +137,8 @@ function openSettingsModal(s) {
           <div class="set-cur"></div>
         </div>
         <div class="set-row">
-          <div class="set-label">新目录（绝对路径，如 D:\\Notes\\TodayTrace；留空恢复默认「文档\\TodayTrace」）</div>
-          <input class="set-input" id="set-path" type="text" spellcheck="false" placeholder="D:\\Notes\\TodayTrace" />
+          <div class="set-label">新目录（绝对路径，如 D:\\Notes\\EaseDo；留空恢复默认「文档\\EaseDo」）</div>
+          <input class="set-input" id="set-path" type="text" spellcheck="false" placeholder="D:\\Notes\\EaseDo" />
         </div>
       </div>
       <div class="modal-foot">

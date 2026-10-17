@@ -5,13 +5,13 @@ use std::path::{Path, PathBuf};
 use winreg::enums::{HKEY_CURRENT_USER, KEY_QUERY_VALUE, KEY_SET_VALUE};
 use winreg::RegKey;
 
-/// 设置文件固定在 %APPDATA%\TodayTrace\config.json，与数据目录解耦，
+/// 设置文件固定在 %APPDATA%\EaseDo\config.json，与数据目录解耦，
 /// 不受文档目录重定向影响。
 pub fn config_path() -> PathBuf {
     dirs::config_dir()
         .or_else(|| dirs::home_dir())
         .unwrap_or_else(|| PathBuf::from("."))
-        .join("TodayTrace")
+        .join("EaseDo")
         .join("config.json")
 }
 
@@ -57,7 +57,7 @@ pub fn save_custom_dir(dir: Option<&Path>) -> Result<(), String> {
 /* ---------------- 开机自启（当前用户注册表 Run 键，无需管理员） ---------------- */
 
 const RUN_KEY_PATH: &str = "Software\\Microsoft\\Windows\\CurrentVersion\\Run";
-const RUN_VALUE_NAME: &str = "TodayTrace";
+const RUN_VALUE_NAME: &str = "EaseDo";
 
 pub fn set_autostart(enable: bool) -> Result<(), String> {
     let hk = RegKey::predef(HKEY_CURRENT_USER);
@@ -88,7 +88,7 @@ pub fn resolve_data_dir() -> PathBuf {
     let base = dirs::document_dir()
         .or_else(|| dirs::home_dir())
         .unwrap_or_else(|| PathBuf::from("."));
-    base.join("TodayTrace")
+    base.join("EaseDo")
 }
 
 pub fn ensure_layout(dir: &Path) {

@@ -1,4 +1,4 @@
-"""Generate TodayTrace app icons (rounded square + white T) as PNG/ICO without PIL."""
+"""Generate EaseDo app icons (rounded square + white E) as PNG/ICO without PIL."""
 import struct, zlib, os
 
 BLUE = (76, 110, 245, 255)
@@ -26,10 +26,12 @@ def make_pixels(size):
             # vertical gradient on the square
             t = y / size
             col = blend(BLUE, BLUE_D, t)
-            # white "T": horizontal bar + vertical bar
-            in_bar_h = (0.22 * size <= fx <= 0.78 * size) and (0.26 * size <= fy <= 0.37 * size)
-            in_bar_v = (0.445 * size <= fx <= 0.555 * size) and (0.37 * size <= fy <= 0.75 * size)
-            if in_bar_h or in_bar_v:
+            # white "E": left vertical bar + three horizontal bars
+            in_bar_v = (0.30 * size <= fx <= 0.41 * size) and (0.26 * size <= fy <= 0.74 * size)
+            in_bar_top = (0.30 * size <= fx <= 0.70 * size) and (0.26 * size <= fy <= 0.37 * size)
+            in_bar_mid = (0.30 * size <= fx <= 0.64 * size) and (0.465 * size <= fy <= 0.575 * size)
+            in_bar_bot = (0.30 * size <= fx <= 0.70 * size) and (0.63 * size <= fy <= 0.74 * size)
+            if in_bar_v or in_bar_top or in_bar_mid or in_bar_bot:
                 col = WHITE
             row.append(col)
         px.append(row)

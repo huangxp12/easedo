@@ -5,7 +5,7 @@
 const HAS_TAURI = typeof window.__TAURI__ !== 'undefined' && !!window.__TAURI__.core;
 
 const BrowserStore = (() => {
-  const KEY = 'todaytrace-mock-v1';
+  const KEY = 'easedo-mock-v1';
   const safeLS = {
     get(k) { try { return localStorage.getItem(k); } catch { return null; } },
     set(k, v) { try { localStorage.setItem(k, v); } catch { /* 存储不可用时预览数据不持久化 */ } },

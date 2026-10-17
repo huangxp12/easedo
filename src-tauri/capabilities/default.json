@@ -1,6 +1,6 @@
 {
   "identifier": "default",
-  "description": "TodayTrace main window",
+  "description": "EaseDo main window",
   "windows": ["main"],
   "permissions": [
     "core:default",

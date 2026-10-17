@@ -718,6 +718,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d0881ea181b1df73ff77ffaaf9c7544ecc11e82fba9b5f27b262a3c73a332555"
 
 [[package]]
+name = "easedo"
+version = "0.2.0"
+dependencies = [
+ "chrono",
+ "dirs 5.0.1",
+ "indexmap 1.9.3",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-build",
+ "winreg 0.52.0",
+]
+
+[[package]]
 name = "embed-resource"
 version = "3.0.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3387,20 +3401,6 @@ name = "tinyvec"
 version = "1.13.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fd3ca314f692efd6c868f8408f53fe444634a845f96c028b97d35f6a1f79f0ee"
-
-[[package]]
-name = "todaytrace"
-version = "0.2.0"
-dependencies = [
- "chrono",
- "dirs 5.0.1",
- "indexmap 1.9.3",
- "serde",
- "serde_json",
- "tauri",
- "tauri-build",
- "winreg 0.52.0",
-]
 
 [[package]]
 name = "tokio"
