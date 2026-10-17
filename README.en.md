@@ -55,10 +55,10 @@ Opened from the gear in the sidebar, in three sections; appearance and window op
 
 ## Download
 
-Grab `easedo.exe` (about 3.4 MB, single file, no install) from [Releases](https://github.com/huangxp12/easedo/releases):
+Grab `easedo-v0.2.0-win64.zip` (about 1.5 MB, no install) from [Releases](https://github.com/huangxp12/easedo/releases), extract it, and keep `easedo.exe` together with `WebView2Loader.dll` in the same folder:
 
 - Requirements: Windows 10 / 11 (WebView2 ships with the OS, nothing extra to install)
-- Double-click and go; data lands in `Documents\EaseDo\`, uninstalling is just deleting files, and the app never touches the network
+- Double-click `easedo.exe` and go; data lands in `Documents\EaseDo\`, uninstalling is just deleting files, and the app never touches the network
 - Measured memory usage: ~36 MB
 
 ## Build from source

@@ -55,10 +55,10 @@ TXT 内语法：`- [ ] 任务` / `- [x] 完成`，两空格缩进为子任务，
 
 ## 下载
 
-从 [Releases](https://github.com/huangxp12/easedo/releases) 下载 `easedo.exe`（约 3.4 MB，单文件免安装）：
+从 [Releases](https://github.com/huangxp12/easedo/releases) 下载 `easedo-v0.2.0-win64.zip`（约 1.5 MB，免安装），解压后得到 `easedo.exe` 与 `WebView2Loader.dll`（两个文件须放在同一目录）：
 
 - 系统要求：Windows 10 / 11（WebView2 运行时系统自带，无需额外安装）
-- 双击即用；数据落在 `文档\EaseDo\`，卸载即删，全程零联网
+- 双击 `easedo.exe` 即用；数据落在 `文档\EaseDo\`，卸载即删，全程零联网
 - 实测运行内存约 36MB
 
 ## 从源码构建

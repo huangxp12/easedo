@@ -52,10 +52,32 @@ fn main() {
                 if pin_on {
                     let _ = w.set_always_on_top(true);
                 }
+                // 恢复上次关闭时的窗口大小（逻辑像素，须不小于最小窗口 280×200）
+                if let (Some(lw), Some(lh)) = (
+                    s.get("win_w").and_then(|v| v.as_f64()),
+                    s.get("win_h").and_then(|v| v.as_f64()),
+                ) {
+                    if lw >= 280.0 && lh >= 200.0 {
+                        let _ = w.set_size(tauri::LogicalSize::new(lw, lh));
+                    }
+                }
                 // 托盘驻留：拦截关闭请求，改为隐藏窗口
                 let h = app.handle().clone();
                 w.on_window_event(move |ev| {
                     if let tauri::WindowEvent::CloseRequested { api, .. } = ev {
+                        // 无论退出还是缩到托盘，都记住此刻的窗口大小
+                        if let Some(w2) = h.get_webview_window("main") {
+                            if let Ok(sz) = w2.inner_size() {
+                                let sf = w2.scale_factor().unwrap_or(1.0);
+                                let lw = sz.width as f64 / sf;
+                                let lh = sz.height as f64 / sf;
+                                if lw >= 280.0 && lh >= 200.0 {
+                                    let cp = store::config_path();
+                                    let _ = store::write_key_to(&cp, "win_w", &serde_json::json!(lw));
+                                    let _ = store::write_key_to(&cp, "win_h", &serde_json::json!(lh));
+                                }
+                            }
+                        }
                         if h.state::<AppState>().tray_on() {
                             api.prevent_close();
                             if let Some(w2) = h.get_webview_window("main") {
