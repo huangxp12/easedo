@@ -187,6 +187,13 @@ const Editor = (() => {
     return ln.kind === 'todo' && ln.state === 'done' && (trayOpen || settled.has(ln.id));
   }
 
+  /* 主区必须始终留有一行可输入：全部收进折叠区时补一行空待办 */
+  function ensureActiveLine() {
+    if (lines.some(ln => !inTray(ln))) return false;
+    lines.push({ id: genId(), kind: 'todo', indent: 0, text: '', state: 'open', isNew: true });
+    return true;
+  }
+
   function trayBarEl(n) {
     const bar = document.createElement('div');
     bar.className = 'tray-bar' + (trayOpen ? ' open' : '');
@@ -236,6 +243,7 @@ const Editor = (() => {
       if (row) { idx = +row.dataset.i; off = caretOffset(act); }
     }
     settled.add(id);
+    ensureActiveLine();
     render();
     if (idx !== null) {
       if (rowOf(idx)) focusLine(idx, 'start', off);
@@ -576,7 +584,7 @@ const Editor = (() => {
 
   function onClick(e) {
     const bar = e.target.closest('.tray-bar');
-    if (bar) { trayOpen = !trayOpen; renderPreservingFocus(); return; }
+    if (bar) { trayOpen = !trayOpen; ensureActiveLine(); renderPreservingFocus(); return; }
     const check = e.target.closest('.check');
     if (!check) {
       const row = e.target.closest('.line');
@@ -758,6 +766,7 @@ const Editor = (() => {
     settled.clear();
     for (const ln of lines) if (ln.kind === 'todo' && ln.state === 'done' && ln.id) settled.add(ln.id);
     trayOpen = false;
+    ensureActiveLine();
     render();
     const h = dateHeading(date);
     document.getElementById('date-big').textContent = h.big;
