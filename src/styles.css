@@ -185,6 +185,11 @@ body.rail-show #rail {
 .line.head .txt { font-size: 12.5px; font-weight: 650; color: var(--muted); letter-spacing: 0.06em; }
 .line.head::before { content: ""; position: static; }
 
+.line.divider { gap: 2px; padding: 4px 10px; }
+.line.divider .rule { flex: 1; height: 1px; align-self: center; background: var(--line); transition: background 0.15s; }
+.line.divider:hover .rule { background: var(--faint); }
+.line.divider .txt { flex: 0 0 2px; min-height: 1em; padding: 0; overflow: hidden; caret-color: var(--muted); }
+
 .editor-hint {
   color: var(--faint);
   font-size: 11.5px;

@@ -48,6 +48,8 @@ const Editor = (() => {
         });
       } else if (/^#{1,6}\s+\S/.test(s)) {
         out.push({ kind: 'head', text: s.replace(/^#{1,6}\s+/, '') });
+      } else if (/^\s*-{2,}\s*$/.test(s)) {
+        out.push({ kind: 'divider', text: '' });
       } else if (s.trim() === '') {
         out.push({ kind: 'empty', text: '' });
       } else {
@@ -63,6 +65,7 @@ const Editor = (() => {
         return `${'  '.repeat(ln.indent)}- [${ln.state === 'done' ? 'x' : ' '}]${ln.text ? ' ' + ln.text : ''}`;
       }
       if (ln.kind === 'head') return `# ${ln.text}`;
+      if (ln.kind === 'divider') return '---';
       if (ln.kind === 'empty') return '';
       return ln.text;
     }).join('\n');
@@ -154,6 +157,10 @@ const Editor = (() => {
       hash.className = 'hash';
       hash.textContent = '#';
       row.appendChild(hash);
+    } else if (ln.kind === 'divider') {
+      const rule = document.createElement('div');
+      rule.className = 'rule';
+      row.appendChild(rule);
     }
     const txt = document.createElement('div');
     txt.className = 'txt';
@@ -303,7 +310,7 @@ const Editor = (() => {
 
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      const kind = ln.kind === 'todo' ? 'todo' : ln.kind === 'head' ? 'text' : 'text';
+      const kind = ln.kind === 'todo' || ln.kind === 'divider' ? 'todo' : 'text';
       const ni = insertAfter(i, kind);
       render();
       focusLine(ni, 'start');
@@ -370,6 +377,23 @@ const Editor = (() => {
     ln.text = e.target.textContent.replace(/\u00a0/g, ' ');
     if (ln.kind === 'empty' && ln.text !== '') ln.kind = 'text';
     if (ln.kind === 'head' && ln.text === '') ln.kind = 'text';
+    if (ln.kind === 'divider' && ln.text !== '') ln.kind = 'text';
+    /* 整行只有短横线（-- 及以上）时转为分组分割线，并在下方续一行 */
+    if (ln.kind !== 'divider' && /^\s*-{2,}\s*$/.test(ln.text)) {
+      if (ln.kind === 'todo' && ln.id && !ln.isNew) {
+        pending.push({ id: ln.id, t: nowISO(), type: 'deleted', text: lastText.get(ln.id) ?? ln.text, state: ln.state });
+      }
+      const nextKind = ln.kind === 'todo' ? 'todo' : 'text';
+      ln.kind = 'divider';
+      ln.text = '';
+      ln.id = null;
+      ln.isNew = false;
+      insertAfter(i, nextKind);
+      render();
+      focusLine(i + 1, 'start');
+      scheduleSave();
+      return;
+    }
     row.className = `line ${ln.kind}` + (ln.kind === 'todo' && ln.state === 'done' ? ' done' : '');
     updateProgress();
     scheduleSave();
@@ -394,6 +418,7 @@ const Editor = (() => {
       ln.text = t.textContent.replace(/\u00a0/g, ' ');
       let at = i;
       for (let k = 1; k < parts.length; k++) {
+        if (/^\s*-{2,}\s*$/.test(parts[k])) { at = insertAfter(at, 'divider'); continue; }
         at = insertAfter(at, ln.kind === 'todo' ? 'todo' : 'text', parts[k]);
         if (ln.kind === 'todo') { lines[at].state = 'open'; }
       }
@@ -405,7 +430,11 @@ const Editor = (() => {
 
   function onClick(e) {
     const check = e.target.closest('.check');
-    if (!check) return;
+    if (!check) {
+      const row = e.target.closest('.line');
+      if (row && row.classList.contains('divider')) focusLine(+row.dataset.i, 'end');
+      return;
+    }
     const row = check.closest('.line');
     const i = +row.dataset.i;
     const ln = lines[i];

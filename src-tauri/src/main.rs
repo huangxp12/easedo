@@ -12,11 +12,26 @@ pub struct AppState {
     pub data_dir: Mutex<PathBuf>,
     /// Some(tray) 表示托盘驻留开启（关闭窗口 = 隐藏到托盘）；Drop 时自动移除托盘图标。
     pub tray: Mutex<Option<TrayIcon>>,
+    /// 窗口尺寸节流保存：上次写入时刻（Resized 事件高频触发，限每秒最多写一次）。
+    pub last_size_save: Mutex<Option<std::time::Instant>>,
 }
 
 impl AppState {
     fn tray_on(&self) -> bool {
         self.tray.lock().expect("tray lock").is_some()
+    }
+}
+
+fn save_win_size(w: &tauri::WebviewWindow) {
+    if let Ok(sz) = w.inner_size() {
+        let sf = w.scale_factor().unwrap_or(1.0);
+        let (lw, lh) = (sz.width as f64 / sf, sz.height as f64 / sf);
+        // 过滤最小化等异常尺寸（最小窗口 280×200）
+        if lw >= 280.0 && lh >= 200.0 {
+            let cp = store::config_path();
+            let _ = store::write_key_to(&cp, "win_w", &serde_json::json!(lw));
+            let _ = store::write_key_to(&cp, "win_h", &serde_json::json!(lh));
+        }
     }
 }
 
@@ -29,6 +44,7 @@ fn main() {
         .manage(AppState {
             data_dir: Mutex::new(data_dir),
             tray: Mutex::new(None),
+            last_size_save: Mutex::new(None),
         })
         .invoke_handler(tauri::generate_handler![
             app_init,
@@ -63,20 +79,11 @@ fn main() {
                 }
                 // 托盘驻留：拦截关闭请求，改为隐藏窗口
                 let h = app.handle().clone();
-                w.on_window_event(move |ev| {
-                    if let tauri::WindowEvent::CloseRequested { api, .. } = ev {
+                w.on_window_event(move |ev| match ev {
+                    tauri::WindowEvent::CloseRequested { api, .. } => {
                         // 无论退出还是缩到托盘，都记住此刻的窗口大小
                         if let Some(w2) = h.get_webview_window("main") {
-                            if let Ok(sz) = w2.inner_size() {
-                                let sf = w2.scale_factor().unwrap_or(1.0);
-                                let lw = sz.width as f64 / sf;
-                                let lh = sz.height as f64 / sf;
-                                if lw >= 280.0 && lh >= 200.0 {
-                                    let cp = store::config_path();
-                                    let _ = store::write_key_to(&cp, "win_w", &serde_json::json!(lw));
-                                    let _ = store::write_key_to(&cp, "win_h", &serde_json::json!(lh));
-                                }
-                            }
+                            save_win_size(&w2);
                         }
                         if h.state::<AppState>().tray_on() {
                             api.prevent_close();
@@ -85,6 +92,20 @@ fn main() {
                             }
                         }
                     }
+                    tauri::WindowEvent::Resized(_) => {
+                        // 拖拽 / 最大化过程中节流保存，进程被直接杀掉也不丢最近尺寸
+                        let st = h.state::<AppState>();
+                        let mut g = st.last_size_save.lock().expect("size save lock");
+                        let now = std::time::Instant::now();
+                        if g.map_or(true, |t| now.duration_since(t).as_millis() > 1000) {
+                            *g = Some(now);
+                            drop(g);
+                            if let Some(w2) = h.get_webview_window("main") {
+                                save_win_size(&w2);
+                            }
+                        }
+                    }
+                    _ => {}
                 });
             }
 
@@ -122,7 +143,13 @@ fn ensure_tray(app: &AppHandle, state: &State<AppState>) -> Result<(), String> {
         .show_menu_on_left_click(false)
         .on_menu_event(|app, ev| match ev.id.as_ref() {
             "show" => show_main(app),
-            "quit" => app.exit(0),
+            "quit" => {
+                // 托盘菜单退出不触发 CloseRequested，需在此补存窗口尺寸
+                if let Some(w) = app.get_webview_window("main") {
+                    save_win_size(&w);
+                }
+                app.exit(0);
+            }
             _ => {}
         })
         .on_tray_icon_event(|tray, event| {
