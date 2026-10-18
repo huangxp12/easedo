@@ -190,6 +190,9 @@ body.rail-show #rail {
 .line.divider:hover .rule { background: var(--faint); }
 .line.divider .txt { flex: 0 0 2px; min-height: 1em; padding: 0; overflow: hidden; caret-color: var(--muted); }
 
+.line.note .hash { color: var(--faint); font-family: var(--mono); font-size: 12px; margin-top: 5px; }
+.line.note .txt { color: var(--muted); font-size: var(--editor-size); }
+
 .editor-hint {
   color: var(--faint);
   font-size: 11.5px;

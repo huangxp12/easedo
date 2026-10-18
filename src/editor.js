@@ -50,6 +50,8 @@ const Editor = (() => {
         out.push({ kind: 'head', text: s.replace(/^#{1,6}\s+/, '') });
       } else if (/^\s*-{2,}\s*$/.test(s)) {
         out.push({ kind: 'divider', text: '' });
+      } else if (/^\s*>/.test(s)) {
+        out.push({ kind: 'note', text: s.replace(/^\s*>\s?/, '') });
       } else if (s.trim() === '') {
         out.push({ kind: 'empty', text: '' });
       } else {
@@ -66,6 +68,7 @@ const Editor = (() => {
       }
       if (ln.kind === 'head') return `# ${ln.text}`;
       if (ln.kind === 'divider') return '---';
+      if (ln.kind === 'note') return ln.text ? '> ' + ln.text : '>';
       if (ln.kind === 'empty') return '';
       return ln.text;
     }).join('\n');
@@ -161,6 +164,11 @@ const Editor = (() => {
       const rule = document.createElement('div');
       rule.className = 'rule';
       row.appendChild(rule);
+    } else if (ln.kind === 'note') {
+      const gt = document.createElement('span');
+      gt.className = 'hash';
+      gt.textContent = '>';
+      row.appendChild(gt);
     }
     const txt = document.createElement('div');
     txt.className = 'txt';
@@ -310,7 +318,7 @@ const Editor = (() => {
 
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      const kind = ln.kind === 'todo' || ln.kind === 'divider' ? 'todo' : 'text';
+      const kind = ln.kind === 'todo' || ln.kind === 'divider' ? 'todo' : ln.kind === 'note' ? 'note' : 'text';
       const ni = insertAfter(i, kind);
       render();
       focusLine(ni, 'start');
@@ -393,6 +401,36 @@ const Editor = (() => {
     if (ln.kind === 'empty' && ln.text !== '') ln.kind = 'text';
     if (ln.kind === 'head' && ln.text === '') ln.kind = 'text';
     if (ln.kind === 'divider' && ln.text !== '') ln.kind = 'text';
+    if (ln.kind === 'note' && !/^>/.test(ln.text)) ln.kind = 'text';
+    /* 行首输入 > 转为速记：无复选框、不计进度与快照 */
+    if (ln.kind !== 'note' && /^>/.test(ln.text)) {
+      if (ln.kind === 'todo' && ln.id && !ln.isNew) {
+        pending.push({ id: ln.id, t: nowISO(), type: 'deleted', text: lastText.get(ln.id) ?? ln.text, state: ln.state });
+      }
+      ln.kind = 'note';
+      ln.text = ln.text.replace(/^\s*>\s?/, '');
+      ln.id = null;
+      ln.isNew = false;
+      render();
+      focusLine(i, 'end');
+      scheduleSave();
+      return;
+    }
+    /* 速记 / 文本行输入 - [ ] 转回 todo */
+    const todoM = ln.kind === 'note' || ln.kind === 'text' || ln.kind === 'empty'
+      ? ln.text.match(/^\s*-\s\[( |x|X)\]\s?(.*)$/)
+      : null;
+    if (todoM) {
+      ln.kind = 'todo';
+      ln.state = todoM[1].toLowerCase() === 'x' ? 'done' : 'open';
+      ln.text = todoM[2];
+      ln.id = genId();
+      ln.isNew = true;
+      render();
+      focusLine(i, 'end');
+      scheduleSave();
+      return;
+    }
     /* 整行只有短横线（-- 及以上）时转为分组分割线，并在下方续一行 */
     if (ln.kind !== 'divider' && /^\s*-{2,}\s*$/.test(ln.text)) {
       if (ln.kind === 'todo' && ln.id && !ln.isNew) {
@@ -433,9 +471,17 @@ const Editor = (() => {
       ln.text = t.textContent.replace(/\u00a0/g, ' ');
       let at = i;
       for (let k = 1; k < parts.length; k++) {
-        if (/^\s*-{2,}\s*$/.test(parts[k])) { at = insertAfter(at, 'divider'); continue; }
-        at = insertAfter(at, ln.kind === 'todo' ? 'todo' : 'text', parts[k]);
-        if (ln.kind === 'todo') { lines[at].state = 'open'; }
+        const p = parts[k];
+        if (/^\s*-{2,}\s*$/.test(p)) { at = insertAfter(at, 'divider'); continue; }
+        const nm = p.match(/^\s*>\s?(.*)$/);
+        if (nm) { at = insertAfter(at, 'note', nm[1]); continue; }
+        const tm = p.match(/^\s*-\s\[( |x|X)\]\s?(.*)$/);
+        if (tm) {
+          at = insertAfter(at, 'todo', tm[2]);
+          lines[at].state = tm[1].toLowerCase() === 'x' ? 'done' : 'open';
+          continue;
+        }
+        at = insertAfter(at, ln.kind === 'todo' ? 'todo' : 'text', p);
       }
       render();
       focusLine(at, 'end');
