@@ -416,9 +416,9 @@ const Editor = (() => {
       scheduleSave();
       return;
     }
-    /* 速记 / 文本行输入 - [ ] 转回 todo */
+    /* 速记 / 文本行输入 -[ 或 - [ ] 转回 todo（-[ 为快捷输入） */
     const todoM = ln.kind === 'note' || ln.kind === 'text' || ln.kind === 'empty'
-      ? ln.text.match(/^\s*-\s\[( |x|X)\]\s?(.*)$/)
+      ? ln.text.match(/^\s*-\s?\[([xX ]?)\]?\s*(.*)$/)
       : null;
     if (todoM) {
       ln.kind = 'todo';
@@ -475,7 +475,7 @@ const Editor = (() => {
         if (/^\s*-{2,}\s*$/.test(p)) { at = insertAfter(at, 'divider'); continue; }
         const nm = p.match(/^\s*>\s?(.*)$/);
         if (nm) { at = insertAfter(at, 'note', nm[1]); continue; }
-        const tm = p.match(/^\s*-\s\[( |x|X)\]\s?(.*)$/);
+        const tm = p.match(/^\s*-\s?\[([xX ]?)\]?\s*(.*)$/);
         if (tm) {
           at = insertAfter(at, 'todo', tm[2]);
           lines[at].state = tm[1].toLowerCase() === 'x' ? 'done' : 'open';
