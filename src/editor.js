@@ -327,7 +327,17 @@ const Editor = (() => {
       return;
     }
 
-    if (e.key === 'Backspace' && caretAtStart(t)) {
+    if (e.key === 'Backspace') {
+      /* 光标在分割线内：整条删除，不依赖具体光标位置与选区 */
+      if (ln.kind === 'divider') {
+        e.preventDefault();
+        removeLine(i);
+        render();
+        focusLine(Math.max(0, i - 1), 'end');
+        scheduleSave();
+        return;
+      }
+      if (!caretAtStart(t)) return;
       e.preventDefault();
       if (norm(ln.text) === '' && lines.length > 1) {
         removeLine(i);
@@ -336,7 +346,12 @@ const Editor = (() => {
         scheduleSave();
       } else if (i > 0) {
         const prev = lines[i - 1];
-        if (prev.kind === 'todo') {
+        if (prev.kind === 'divider') {
+          /* 行首退格：直接删掉上方分割线，本行内容与光标位置不变 */
+          removeLine(i - 1);
+          render();
+          focusLine(i - 1, 'start', 0);
+        } else if (prev.kind === 'todo') {
           const mergeAt = prev.text.length;
           prev.text += ln.text;
           removeLine(i);
