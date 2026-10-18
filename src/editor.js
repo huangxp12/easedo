@@ -6,13 +6,15 @@ const Editor = (() => {
   const el = document.getElementById('editor');
   const hintEl = document.getElementById('editor-hint');
 
-  let lines = [];            // {id, kind:'todo'|'head'|'text'|'empty', indent, text, state, isNew}
+  let lines = [];            // {id, kind:'todo'|'head'|'text'|'empty'|'divider'|'note', indent, text, state, isNew}
   let dateStr = todayStr();
   let lastText = new Map();  // id -> 上次已记账文本（edited 事件基线）
   let openIds = new Map();   // id -> 最新已知文本（仅未完成任务，用于身份匹配）
   let pending = [];          // 待追加的快照事件
   let saveTimer = null;
   let booted = false;
+  let trayOpen = false;      // 已完成折叠区是否展开
+  const settled = new Set(); // 已收进折叠区的任务 id
 
   const norm = s => (s || '').replace(/\u00a0/g, ' ').replace(/\s+/g, ' ').trim();
 
@@ -179,10 +181,91 @@ const Editor = (() => {
     return row;
   }
 
+  /* ---------- 已完成折叠区：勾选 1 秒后收起，数据位置不变 ---------- */
+
+  function inTray(ln) {
+    return ln.kind === 'todo' && ln.state === 'done' && (trayOpen || settled.has(ln.id));
+  }
+
+  function trayBarEl(n) {
+    const bar = document.createElement('div');
+    bar.className = 'tray-bar' + (trayOpen ? ' open' : '');
+    const tri = document.createElement('span');
+    tri.className = 'tri';
+    tri.textContent = trayOpen ? '▾' : '▸';
+    const cnt = document.createElement('span');
+    cnt.className = 'cnt';
+    cnt.textContent = String(n);
+    const lbl = document.createElement('span');
+    lbl.className = 'lbl';
+    lbl.textContent = trayOpen ? `已完成 ${n} · 点击收起` : `已完成 ${n} · 点击展开`;
+    bar.append(tri, cnt, lbl);
+    return bar;
+  }
+
+  function caretOffset(t) {
+    const sel = window.getSelection();
+    if (!sel.rangeCount) return 0;
+    const r = sel.getRangeAt(0);
+    const pre = document.createRange();
+    pre.selectNodeContents(t);
+    try { pre.setEnd(r.startContainer, r.startOffset); } catch { return 0; }
+    return pre.toString().length;
+  }
+
+  function renderPreservingFocus() {
+    const act = document.activeElement;
+    let idx = null, off = 0;
+    if (act && act.classList && act.classList.contains('txt')) {
+      const row = act.closest('.line');
+      if (row) { idx = +row.dataset.i; off = caretOffset(act); }
+    }
+    render();
+    if (idx !== null && rowOf(idx)) focusLine(idx, 'start', off);
+  }
+
+  function settleNow(id) {
+    if (settled.has(id)) return;
+    const ln = lines.find(l => l.id === id);
+    if (!ln || ln.kind !== 'todo' || ln.state !== 'done') return;
+    const act = document.activeElement;
+    const hadFocus = !!(act && act.classList && act.classList.contains('txt'));
+    let idx = null, off = 0;
+    if (hadFocus) {
+      const row = act.closest('.line');
+      if (row) { idx = +row.dataset.i; off = caretOffset(act); }
+    }
+    settled.add(id);
+    render();
+    if (idx !== null) {
+      if (rowOf(idx)) focusLine(idx, 'start', off);
+      else {
+        /* 焦点所在行被收起：移到相邻的可见行，避免光标凭空消失 */
+        let target = null;
+        for (let j = idx + 1; j < lines.length && target === null; j++) if (!inTray(lines[j])) target = j;
+        for (let j = idx - 1; j >= 0 && target === null; j--) if (!inTray(lines[j])) target = j;
+        if (target !== null) focusLine(target, 'end');
+      }
+    }
+  }
+
+  function scheduleSettle(id) {
+    if (!id) return;
+    setTimeout(() => settleNow(id), 1000);
+  }
+
   function render() {
     el.textContent = '';
     const frag = document.createDocumentFragment();
-    lines.forEach((ln, i) => frag.appendChild(lineEl(ln, i)));
+    const trayIdx = [];
+    lines.forEach((ln, i) => {
+      if (inTray(ln)) { trayIdx.push(i); return; }
+      frag.appendChild(lineEl(ln, i));
+    });
+    if (trayIdx.length) {
+      frag.appendChild(trayBarEl(trayIdx.length));
+      if (trayOpen) trayIdx.forEach(i => frag.appendChild(lineEl(lines[i], i)));
+    }
     el.appendChild(frag);
     updateProgress();
   }
@@ -429,6 +512,7 @@ const Editor = (() => {
       render();
       focusLine(i, 'end');
       scheduleSave();
+      if (ln.state === 'done') trayOpen ? settled.add(ln.id) : scheduleSettle(ln.id);
       return;
     }
     /* 整行只有短横线（-- 及以上）时转为分组分割线，并在下方续一行 */
@@ -479,6 +563,7 @@ const Editor = (() => {
         if (tm) {
           at = insertAfter(at, 'todo', tm[2]);
           lines[at].state = tm[1].toLowerCase() === 'x' ? 'done' : 'open';
+          if (lines[at].state === 'done') scheduleSettle(lines[at].id);
           continue;
         }
         at = insertAfter(at, ln.kind === 'todo' ? 'todo' : 'text', p);
@@ -490,6 +575,8 @@ const Editor = (() => {
   }
 
   function onClick(e) {
+    const bar = e.target.closest('.tray-bar');
+    if (bar) { trayOpen = !trayOpen; renderPreservingFocus(); return; }
     const check = e.target.closest('.check');
     if (!check) {
       const row = e.target.closest('.line');
@@ -499,11 +586,21 @@ const Editor = (() => {
     const row = check.closest('.line');
     const i = +row.dataset.i;
     const ln = lines[i];
-    ln.state = ln.state === 'done' ? 'open' : 'done';
-    pending.push(mkEv(ln.state === 'done' ? 'checked' : 'unchecked', ln, { parent: parentOf(i), indent: ln.indent }));
-    flush();
-    render();
-    focusLine(i, 'end');
+    if (ln.state === 'open') {
+      ln.state = 'done';
+      pending.push(mkEv('checked', ln, { parent: parentOf(i), indent: ln.indent }));
+      flush();
+      render();
+      focusLine(i, 'end');
+      if (trayOpen) settled.add(ln.id); else scheduleSettle(ln.id);
+    } else {
+      ln.state = 'open';
+      settled.delete(ln.id);
+      pending.push(mkEv('unchecked', ln, { parent: parentOf(i), indent: ln.indent }));
+      flush();
+      render();
+      focusLine(i, 'end');
+    }
   }
 
   /* ---------- 每日翻页：跨零点自动切到新一天 ---------- */
@@ -658,6 +755,9 @@ const Editor = (() => {
     lines = content ? parseLines(content) : [{ id: genId(), kind: 'todo', indent: 0, text: '', state: 'open', isNew: true }];
     rebuildOpenIds();
     assignIds();
+    settled.clear();
+    for (const ln of lines) if (ln.kind === 'todo' && ln.state === 'done' && ln.id) settled.add(ln.id);
+    trayOpen = false;
     render();
     const h = dateHeading(date);
     document.getElementById('date-big').textContent = h.big;
