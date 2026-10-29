@@ -18,6 +18,7 @@ const Editor = (() => {
   const collapsed = new Set(); // 已折叠的父任务 id（仅视图状态，不落盘）
   let autoPeek = false;      // 待机自动折叠开关
   let peeked = false;
+  let lastEdit = 0;          // 最近一次输入时刻，用于判断是否正在打字
   let dragFrom = null;       // 拖拽起始行
 
   const norm = s => (s || '').replace(/\u00a0/g, ' ').replace(/\s+/g, ' ').trim();
@@ -469,7 +470,13 @@ const Editor = (() => {
 
     if (e.key === 'Tab' && ln.kind === 'todo') {
       e.preventDefault();
-      ln.indent = Math.max(0, Math.min(3, ln.indent + (e.shiftKey ? -1 : 1)));
+      const dir = e.shiftKey ? -1 : 1;
+      const end = subtreeEnd(i);
+      const block = lines.slice(i, end);
+      const maxIndent = Math.max(...block.map(l => l.indent));
+      const minIndent = Math.min(...block.map(l => l.indent));
+      if ((dir > 0 && maxIndent >= 3) || (dir < 0 && minIndent <= 0)) return;
+      for (const l of block) l.indent += dir;
       render();
       focusLine(i, 'end');
       scheduleSave();
@@ -542,6 +549,7 @@ const Editor = (() => {
   function onInput(e) {
     const row = e.target.closest('.line');
     if (!row) return;
+    lastEdit = Date.now();
     const i = +row.dataset.i;
     const ln = lines[i];
     ln.text = e.target.textContent.replace(/\u00a0/g, ' ');
@@ -875,20 +883,58 @@ const Editor = (() => {
     p.textContent = open ? `${open} 项未完成` : '今天没有未完成';
   }
 
+  /* 窗口胶囊：收起到只放得下一行统计，滑回恢复原尺寸。浏览器预览下自动跳过。 */
+  let capsulePrev = null;
+
+  async function applyCapsule(on) {
+    const tw = window.__TAURI__;
+    if (!tw || !tw.window || !tw.core) return;
+    const dpi = tw.dpi || tw.window;
+    const LogicalSize = dpi.LogicalSize;
+    const PhysicalSize = dpi.PhysicalSize;
+    if (!LogicalSize) return;
+    const w = tw.window.getCurrentWindow();
+    const safe = async (fn, tag) => { try { await fn(); } catch (e) { console.warn('capsule', tag, e); } };
+    if (on) {
+      const p = document.getElementById('peek-line');
+      let cw = 150, ch = 40;
+      if (p) {
+        const r = document.createRange();
+        r.selectNodeContents(p);
+        const rect = r.getBoundingClientRect();
+        if (rect.width) cw = Math.ceil(rect.width) + 36;
+        if (rect.height) ch = Math.ceil(rect.height) + 16;
+      }
+      capsulePrev = await w.innerSize().catch(() => null);
+      await safe(() => tw.core.invoke('set_peeking', { on: true }), 'flag');
+      await safe(() => w.setResizable(false), 'resizable-off');
+      await safe(() => w.setMinSize(new LogicalSize(80, 24)), 'min');
+      await safe(() => w.setSize(new LogicalSize(cw, ch)), 'size');
+    } else {
+      await safe(() => tw.core.invoke('set_peeking', { on: false }), 'flag-off');
+      if (capsulePrev) await safe(() => w.setSize(new PhysicalSize(capsulePrev.width, capsulePrev.height)), 'restore');
+      await safe(() => w.setMinSize(new LogicalSize(280, 200)), 'min-restore');
+      await safe(() => w.setResizable(true), 'resizable-on');
+      capsulePrev = null;
+    }
+  }
+
   function peekNow() {
     if (!autoPeek || peeked || dragFrom !== null) return;
     if (document.querySelector('.modal-ov')) return;
-    const a = document.activeElement;
-    if (a && el.contains(a)) return;
+    /* 只在「刚打完字」时拒绝收起：编辑器长期持有焦点并不代表正在输入 */
+    if (Date.now() - lastEdit < 1500) return;
     peeked = true;
     updatePeekLine();
     document.body.classList.add('peeking');
+    setTimeout(() => { if (peeked) applyCapsule(true); }, 0);
   }
 
   function unpeekNow() {
     if (!peeked) return;
     peeked = false;
     document.body.classList.remove('peeking');
+    applyCapsule(false);
   }
 
   function setAutoPeek(on) {
@@ -899,6 +945,7 @@ const Editor = (() => {
   document.documentElement.addEventListener('mouseleave', peekNow);
   document.documentElement.addEventListener('mouseenter', unpeekNow);
   document.addEventListener('focusin', unpeekNow);
+  window.addEventListener('focus', unpeekNow);
 
   /* ---------- 对外接口 ---------- */
 

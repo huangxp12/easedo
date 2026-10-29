@@ -14,6 +14,8 @@ pub struct AppState {
     pub tray: Mutex<Option<TrayIcon>>,
     /// 窗口尺寸节流保存：上次写入时刻（Resized 事件高频触发，限每秒最多写一次）。
     pub last_size_save: Mutex<Option<std::time::Instant>>,
+    /// 待机胶囊进行中：此时窗口是被缩小的，尺寸不应写回配置。
+    pub peeking: Mutex<bool>,
 }
 
 impl AppState {
@@ -45,6 +47,7 @@ fn main() {
             data_dir: Mutex::new(data_dir),
             tray: Mutex::new(None),
             last_size_save: Mutex::new(None),
+            peeking: Mutex::new(false),
         })
         .invoke_handler(tauri::generate_handler![
             app_init,
@@ -57,7 +60,8 @@ fn main() {
             append_events,
             load_events,
             list_days,
-            save_file
+            save_file,
+            set_peeking
         ])
         .setup(|app| {
             let s = store::load_all(&store::config_path());
@@ -81,9 +85,13 @@ fn main() {
                 let h = app.handle().clone();
                 w.on_window_event(move |ev| match ev {
                     tauri::WindowEvent::CloseRequested { api, .. } => {
-                        // 无论退出还是缩到托盘，都记住此刻的窗口大小
-                        if let Some(w2) = h.get_webview_window("main") {
-                            save_win_size(&w2);
+                        // 无论退出还是缩到托盘，都记住此刻的窗口大小（胶囊态除外）
+                        let st = h.state::<AppState>();
+                        let peeking = *st.peeking.lock().expect("peeking lock");
+                        if !peeking {
+                            if let Some(w2) = h.get_webview_window("main") {
+                                save_win_size(&w2);
+                            }
                         }
                         if h.state::<AppState>().tray_on() {
                             api.prevent_close();
@@ -95,6 +103,9 @@ fn main() {
                     tauri::WindowEvent::Resized(_) => {
                         // 拖拽 / 最大化过程中节流保存，进程被直接杀掉也不丢最近尺寸
                         let st = h.state::<AppState>();
+                        if *st.peeking.lock().expect("peeking lock") {
+                            return;
+                        }
                         let mut g = st.last_size_save.lock().expect("size save lock");
                         let now = std::time::Instant::now();
                         if g.map_or(true, |t| now.duration_since(t).as_millis() > 1000) {
@@ -144,9 +155,12 @@ fn ensure_tray(app: &AppHandle, state: &State<AppState>) -> Result<(), String> {
         .on_menu_event(|app, ev| match ev.id.as_ref() {
             "show" => show_main(app),
             "quit" => {
-                // 托盘菜单退出不触发 CloseRequested，需在此补存窗口尺寸
-                if let Some(w) = app.get_webview_window("main") {
-                    save_win_size(&w);
+                // 托盘菜单退出不触发 CloseRequested，需在此补存窗口尺寸（胶囊态除外）
+                let peeking = *app.state::<AppState>().peeking.lock().expect("peeking lock");
+                if !peeking {
+                    if let Some(w) = app.get_webview_window("main") {
+                        save_win_size(&w);
+                    }
                 }
                 app.exit(0);
             }
@@ -175,6 +189,11 @@ fn current_dir(state: &State<AppState>) -> PathBuf {
 }
 
 #[tauri::command]
+fn set_peeking(state: State<AppState>, on: bool) {
+    *state.peeking.lock().expect("peeking lock") = on;
+}
+
+#[tauri::command]
 fn get_settings(state: State<AppState>) -> Result<serde_json::Value, String> {
     let s = store::load_all(&store::config_path());
     Ok(serde_json::json!({
@@ -182,6 +201,7 @@ fn get_settings(state: State<AppState>) -> Result<serde_json::Value, String> {
         "font_family": s.get("font_family").and_then(|v| v.as_str()).unwrap_or("default"),
         "font_size": s.get("font_size").and_then(|v| v.as_u64()).unwrap_or(15) as u32,
         "pin_top": s.get("pin_top").and_then(|v| v.as_bool()).unwrap_or(false),
+        "auto_peek": s.get("auto_peek").and_then(|v| v.as_bool()).unwrap_or(false),
         "tray": s.get("tray").and_then(|v| v.as_bool()).unwrap_or(false),
         "autostart": store::autostart_enabled(),
         "data_dir": current_dir(&state).display().to_string(),

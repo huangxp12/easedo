@@ -143,14 +143,18 @@ body.rail-show #rail {
 
 .editor-wrap { flex: 1; width: min(680px, calc(100% - 48px)); margin: 10px auto 24px; position: relative; }
 #editor { outline: none; min-height: 200px; padding-top: 6px; transition: opacity 0.16s ease; }
-.peek-line {
-  display: none; position: absolute; top: 12px; left: 0; right: 0;
-  text-align: center; color: var(--faint);
-  font-family: var(--mono); font-size: 12.5px; letter-spacing: 0.04em;
-  user-select: none;
+
+/* 待机胶囊：窗口收缩到只放得下一行统计 */
+.peek-line { display: none; }
+body.peeking #app { opacity: 0; pointer-events: none; }
+body.peeking #rail-hot, body.peeking #win-strip, body.peeking #win-ctrls { display: none; }
+body.peeking .peek-line {
+  display: flex; position: fixed; inset: 0;
+  align-items: center; justify-content: center;
+  background: var(--bg); color: var(--muted);
+  font-family: var(--mono); font-size: 13px; letter-spacing: 0.02em;
+  -webkit-app-region: drag; user-select: none;
 }
-body.peeking #editor { opacity: 0; pointer-events: none; }
-body.peeking .peek-line { display: block; }
 
 .line {
   display: flex; align-items: flex-start; gap: 10px;
@@ -180,12 +184,12 @@ body.peeking .peek-line { display: block; }
 .line.drop-after::after { bottom: -1px; }
 
 .caret {
-  flex: 0 0 auto; width: 13px; margin-top: 0.34em; padding: 0;
-  border: 0; background: none; color: var(--faint); font-size: 9px; line-height: 1;
-  cursor: pointer; opacity: 0.75;
+  flex: 0 0 auto; width: 16px; margin-top: 0.2em; padding: 1px 0;
+  border: 0; background: none; color: var(--muted); font-size: 12px; line-height: 1;
+  cursor: pointer; opacity: 0.9;
   transition: color 0.12s, opacity 0.12s;
 }
-.caret:hover { color: var(--muted); opacity: 1; }
+.caret:hover { color: var(--ink); opacity: 1; }
 .line .txt { flex: 1; outline: none; min-height: 1.74em; padding: 1px 2px; word-break: break-word; white-space: pre-wrap; font-family: var(--editor-font); font-size: var(--editor-size); }
 .line.todo .txt { font-size: var(--editor-size); }
 .line.text .txt, .line.empty .txt { color: var(--ink); font-size: var(--editor-size); }
