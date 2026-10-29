@@ -15,6 +15,10 @@ const Editor = (() => {
   let booted = false;
   let trayOpen = false;      // 已完成折叠区是否展开
   const settled = new Set(); // 已收进折叠区的任务 id
+  const collapsed = new Set(); // 已折叠的父任务 id（仅视图状态，不落盘）
+  let autoPeek = false;      // 待机自动折叠开关
+  let peeked = false;
+  let dragFrom = null;       // 拖拽起始行
 
   const norm = s => (s || '').replace(/\u00a0/g, ' ').replace(/\s+/g, ' ').trim();
 
@@ -141,6 +145,38 @@ const Editor = (() => {
     return null;
   }
 
+  function hasChildren(i) {
+    const ln = lines[i];
+    return !!ln && ln.kind === 'todo' && i + 1 < lines.length
+      && lines[i + 1].kind === 'todo' && lines[i + 1].indent > ln.indent;
+  }
+
+  function subtreeEnd(i) {
+    const base = lines[i].indent;
+    let j = i + 1;
+    while (j < lines.length && lines[j].kind === 'todo' && lines[j].indent > base) j++;
+    return j;
+  }
+
+  function hiddenByCollapse(i) {
+    const ln = lines[i];
+    if (!ln || ln.kind !== 'todo' || ln.indent === 0) return false;
+    for (let j = i - 1; j >= 0; j--) {
+      const p = lines[j];
+      if (p.kind !== 'todo' || p.indent >= ln.indent) continue;
+      if (collapsed.has(p.id)) return true;
+      return hiddenByCollapse(j);
+    }
+    return false;
+  }
+
+  function nextVisible(i, dir) {
+    for (let j = i + dir; j >= 0 && j < lines.length; j += dir) {
+      if (!inTray(lines[j]) && !hiddenByCollapse(j)) return j;
+    }
+    return null;
+  }
+
   /* ---------- 渲染 ---------- */
 
   function lineEl(ln, i) {
@@ -151,6 +187,19 @@ const Editor = (() => {
       row.style.marginLeft = (ln.indent * 26) + 'px';
     }
     if (ln.kind === 'todo') {
+      const grip = document.createElement('span');
+      grip.className = 'grip';
+      grip.draggable = true;
+      grip.title = '拖动调整顺序';
+      row.appendChild(grip);
+      if (hasChildren(i)) {
+        const caret = document.createElement('button');
+        caret.className = 'caret';
+        caret.tabIndex = -1;
+        caret.title = collapsed.has(ln.id) ? '展开子任务' : '收起子任务';
+        caret.textContent = collapsed.has(ln.id) ? '▸' : '▾';
+        row.appendChild(caret);
+      }
       const box = document.createElement('button');
       box.className = 'check';
       box.tabIndex = -1;
@@ -268,6 +317,7 @@ const Editor = (() => {
     const trayIdx = [];
     lines.forEach((ln, i) => {
       if (inTray(ln)) { trayIdx.push(i); return; }
+      if (hiddenByCollapse(i)) return;
       frag.appendChild(lineEl(ln, i));
     });
     if (trayIdx.length) {
@@ -467,14 +517,20 @@ const Editor = (() => {
       return;
     }
 
-    if (e.key === 'ArrowUp' && i > 0 && caretAtStart(t)) {
-      e.preventDefault();
-      focusLine(i - 1, 'end');
+    if (e.key === 'ArrowUp' && caretAtStart(t)) {
+      const j = nextVisible(i, -1);
+      if (j !== null) {
+        e.preventDefault();
+        focusLine(j, 'end');
+      }
       return;
     }
-    if (e.key === 'ArrowDown' && i < lines.length - 1 && caretAtEnd(t)) {
-      e.preventDefault();
-      focusLine(i + 1, 'start');
+    if (e.key === 'ArrowDown' && caretAtEnd(t)) {
+      const j = nextVisible(i, 1);
+      if (j !== null) {
+        e.preventDefault();
+        focusLine(j, 'start');
+      }
       return;
     }
     if (e.key === 'Escape') {
@@ -585,6 +641,14 @@ const Editor = (() => {
   function onClick(e) {
     const bar = e.target.closest('.tray-bar');
     if (bar) { trayOpen = !trayOpen; ensureActiveLine(); renderPreservingFocus(); return; }
+    const caret = e.target.closest('.caret');
+    if (caret) {
+      const i = +caret.closest('.line').dataset.i;
+      const ln = lines[i];
+      if (collapsed.has(ln.id)) collapsed.delete(ln.id); else collapsed.add(ln.id);
+      render();
+      return;
+    }
     const check = e.target.closest('.check');
     if (!check) {
       const row = e.target.closest('.line');
@@ -746,6 +810,96 @@ const Editor = (() => {
     document.body.appendChild(ov);
   }
 
+  /* ---------- 拖拽排序（只从左侧拖拽点发起，避免与选词冲突） ---------- */
+
+  function clearDropMarks() {
+    el.querySelectorAll('.drop-before, .drop-after').forEach(r => r.classList.remove('drop-before', 'drop-after'));
+    el.querySelectorAll('.dragging').forEach(r => r.classList.remove('dragging'));
+  }
+
+  function onDragStart(e) {
+    const grip = e.target.closest('.grip');
+    if (!grip) { e.preventDefault(); return; }
+    const row = grip.closest('.line');
+    dragFrom = +row.dataset.i;
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', String(dragFrom));
+    try { e.dataTransfer.setDragImage(row, 28, 12); } catch { /* 无自定义拖拽图时用默认 */ }
+    row.classList.add('dragging');
+    unpeekNow();
+  }
+
+  function onDragOver(e) {
+    if (dragFrom === null) return;
+    const row = e.target.closest('.line');
+    if (!row) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    const r = row.getBoundingClientRect();
+    const after = e.clientY > r.top + r.height / 2;
+    clearDropMarks();
+    row.classList.add(after ? 'drop-after' : 'drop-before');
+  }
+
+  function onDrop(e) {
+    if (dragFrom === null) return;
+    e.preventDefault();
+    const row = e.target.closest('.line');
+    const s = dragFrom;
+    const end = subtreeEnd(s);
+    dragFrom = null;
+    clearDropMarks();
+    if (!row) return;
+    const r = row.getBoundingClientRect();
+    const after = e.clientY > r.top + r.height / 2;
+    let to = +row.dataset.i + (after ? 1 : 0);
+    if (to > s && to < end) return;   // 落在自身子树内，忽略
+    const block = lines.splice(s, end - s);
+    if (to > s) to -= block.length;
+    lines.splice(to, 0, ...block);
+    render();
+    scheduleSave();
+  }
+
+  function onDragEnd() {
+    dragFrom = null;
+    clearDropMarks();
+  }
+
+  /* ---------- 待机折叠：鼠标离开收起内容，滑回展开 ---------- */
+
+  function updatePeekLine() {
+    const p = document.getElementById('peek-line');
+    if (!p) return;
+    const open = lines.filter(l => l.kind === 'todo' && l.state === 'open').length;
+    p.textContent = open ? `${open} 项未完成` : '今天没有未完成';
+  }
+
+  function peekNow() {
+    if (!autoPeek || peeked || dragFrom !== null) return;
+    if (document.querySelector('.modal-ov')) return;
+    const a = document.activeElement;
+    if (a && el.contains(a)) return;
+    peeked = true;
+    updatePeekLine();
+    document.body.classList.add('peeking');
+  }
+
+  function unpeekNow() {
+    if (!peeked) return;
+    peeked = false;
+    document.body.classList.remove('peeking');
+  }
+
+  function setAutoPeek(on) {
+    autoPeek = !!on;
+    if (!autoPeek) unpeekNow();
+  }
+
+  document.documentElement.addEventListener('mouseleave', peekNow);
+  document.documentElement.addEventListener('mouseenter', unpeekNow);
+  document.addEventListener('focusin', unpeekNow);
+
   /* ---------- 对外接口 ---------- */
 
   function boot(allEvents) {
@@ -765,6 +919,7 @@ const Editor = (() => {
     assignIds();
     settled.clear();
     for (const ln of lines) if (ln.kind === 'todo' && ln.state === 'done' && ln.id) settled.add(ln.id);
+    collapsed.clear();
     trayOpen = false;
     ensureActiveLine();
     render();
@@ -778,6 +933,10 @@ const Editor = (() => {
   el.addEventListener('input', onInput);
   el.addEventListener('paste', onPaste);
   el.addEventListener('click', onClick);
+  el.addEventListener('dragstart', onDragStart);
+  el.addEventListener('dragover', onDragOver);
+  el.addEventListener('drop', onDrop);
+  el.addEventListener('dragend', onDragEnd);
   el.addEventListener('contextmenu', e => {
     e.preventDefault();
     showCtx(e.clientX, e.clientY);
@@ -785,5 +944,5 @@ const Editor = (() => {
   window.addEventListener('beforeunload', () => { flush(); });
   document.addEventListener('visibilitychange', () => { if (document.hidden) flush(); });
 
-  return { boot, loadDay, flush };
+  return { boot, loadDay, flush, setAutoPeek };
 })();

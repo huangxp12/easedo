@@ -123,6 +123,10 @@ function openSettingsModal(s) {
           <button class="switch" id="sw-frameless" aria-label="隐藏标题栏"></button>
         </div>
         <div class="set-line">
+          <div><div class="set-name">待机自动折叠</div><div class="set-desc">鼠标离开窗口时收起内容、只留一行统计，滑回即展开；正在输入时不收起</div></div>
+          <button class="switch" id="sw-peek" aria-label="待机自动折叠"></button>
+        </div>
+        <div class="set-line">
           <div><div class="set-name">托盘常驻</div><div class="set-desc">点关闭时缩到系统托盘，点击托盘图标恢复</div></div>
           <button class="switch" id="sw-tray" aria-label="托盘常驻"></button>
         </div>
@@ -199,10 +203,12 @@ function openSettingsModal(s) {
       if (key === 'tray' && next) toast('已开启托盘常驻：点关闭将缩到托盘');
       if (key === 'autostart' && next) toast(label + '已开启');
       if (key === 'frameless') applyFrameless(next);
+      if (key === 'auto_peek') Editor.setAutoPeek(next);
     });
   }
   bindSwitch('sw-pin', 'pin_top', '窗口置顶');
   bindSwitch('sw-frameless', 'frameless', '隐藏标题栏', true);
+  bindSwitch('sw-peek', 'auto_peek', '待机自动折叠');
   bindSwitch('sw-tray', 'tray', '托盘常驻');
   bindSwitch('sw-auto', 'autostart', '开机自启');
 
@@ -250,6 +256,7 @@ function openSettingsModal(s) {
     const events = await Store.loadEvents();
     Editor.boot(events);
     await Editor.loadDay(todayStr());
+    Editor.setAutoPeek(!!settings.auto_peek);
     Report.bindButtons();
     bindSettings();
     if (!HAS_TAURI) {
