@@ -938,6 +938,14 @@ const Editor = (() => {
 
   /* 悬停 1 秒才展开：快速划过胶囊不会把它弹开，手指停稳才恢复 */
   let peekTimer = null;
+  let wakeTimer = null;
+
+  /* 展开瞬间光标还在原处，先屏蔽顶部标题栏与左缘热区，避免连带触发 */
+  function wakeGuard() {
+    document.body.classList.add('peek-wake');
+    clearTimeout(wakeTimer);
+    wakeTimer = setTimeout(() => document.body.classList.remove('peek-wake'), 600);
+  }
 
   function scheduleUnpeek() {
     if (!peeked || peekTimer) return;
@@ -959,6 +967,7 @@ const Editor = (() => {
     if (!peeked) return;
     peeked = false;
     document.body.classList.remove('peeking');
+    wakeGuard();
     applyCapsule(false);
   }
 

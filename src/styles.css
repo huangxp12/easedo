@@ -148,6 +148,8 @@ body.rail-show #rail {
 .peek-line { display: none; }
 body.peeking #app { opacity: 0; pointer-events: none; }
 body.peeking #rail-hot, body.peeking #win-strip, body.peeking #win-ctrls { display: none; }
+/* 从胶囊展开后的 600ms 内，标题栏与左缘热区不参与命中，避免误触 */
+body.peek-wake #rail-hot, body.peek-wake #win-strip, body.peek-wake #win-ctrls { display: none; }
 body.peeking .peek-line {
   display: flex; position: fixed; inset: 0;
   align-items: center; justify-content: center;
