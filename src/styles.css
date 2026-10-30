@@ -546,6 +546,14 @@ body.frameless #win-ctrls { display: flex; }
 #win-ctrls button:hover { background: var(--panel); color: var(--ink); }
 #win-ctrls #win-close:hover { background: #e81123; color: #fff; }
 
+/* 胶囊态与唤醒保护期内，窗控与侧栏既不显示也不参与命中（须压过 body.frameless 的规则） */
+body.peeking #win-strip, body.peek-wake #win-strip,
+body.peeking #win-ctrls, body.peek-wake #win-ctrls,
+body.peeking #rail-hot, body.peek-wake #rail-hot,
+body.peeking #rail, body.peek-wake #rail {
+  display: none !important;
+}
+
 /* ---------------- 滚动条 ---------------- */
 ::-webkit-scrollbar { width: 9px; height: 9px; }
 ::-webkit-scrollbar-thumb { background: var(--line); border-radius: 5px; border: 2px solid var(--bg); }

@@ -939,6 +939,7 @@ const Editor = (() => {
   /* 悬停 1 秒才展开：快速划过胶囊不会把它弹开，手指停稳才恢复 */
   let peekTimer = null;
   let wakeTimer = null;
+  let capDrag = false;
 
   /* 展开瞬间光标还在原处，先屏蔽顶部标题栏与左缘热区，避免连带触发 */
   function wakeGuard() {
@@ -948,7 +949,7 @@ const Editor = (() => {
   }
 
   function scheduleUnpeek() {
-    if (!peeked || peekTimer) return;
+    if (!peeked || peekTimer || capDrag) return;
     peekTimer = setTimeout(() => {
       peekTimer = null;
       if (peeked) unpeekNow();
@@ -976,10 +977,16 @@ const Editor = (() => {
     if (!autoPeek) unpeekNow();
   }
 
-  document.documentElement.addEventListener('mouseleave', peekNow);
+  document.documentElement.addEventListener('mouseleave', () => {
+    if (peeked) { cancelUnpeek(); return; }
+    peekNow();
+  });
   document.documentElement.addEventListener('mouseenter', scheduleUnpeek);
+  /* 窗口缩小后光标可能一直停在里面，mouseenter 不会重发：用 pointermove 起算 */
+  document.addEventListener('pointermove', () => { if (peeked) scheduleUnpeek(); }, { passive: true });
   document.addEventListener('focusin', unpeekNow);
   window.addEventListener('focus', unpeekNow);
+  window.addEventListener('pointerup', () => { capDrag = false; });
 
   /* 胶囊按下即拖动，不触发展开 */
   const peekEl = document.getElementById('peek-line');
@@ -988,6 +995,8 @@ const Editor = (() => {
       if (!peeked) return;
       e.preventDefault();
       cancelUnpeek();
+      capDrag = true;
+      setTimeout(() => { capDrag = false; }, 2000);
       const tw = window.__TAURI__;
       if (tw && tw.window) tw.window.getCurrentWindow().startDragging().catch(() => {});
     });
