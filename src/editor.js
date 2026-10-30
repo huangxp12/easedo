@@ -193,14 +193,19 @@ const Editor = (() => {
       grip.draggable = true;
       grip.title = '拖动调整顺序';
       row.appendChild(grip);
+      /* 箭头槽位常驻：有子任务才出箭头，但位置始终占好，
+         避免第一次缩进时父行被箭头挤动、看起来像父行也缩进了 */
+      const caretSlot = document.createElement('span');
+      caretSlot.className = 'caret-slot';
       if (hasChildren(i)) {
         const caret = document.createElement('button');
         caret.className = 'caret';
         caret.tabIndex = -1;
         caret.title = collapsed.has(ln.id) ? '展开子任务' : '收起子任务';
         caret.textContent = collapsed.has(ln.id) ? '▸' : '▾';
-        row.appendChild(caret);
+        caretSlot.appendChild(caret);
       }
+      row.appendChild(caretSlot);
       const box = document.createElement('button');
       box.className = 'check';
       box.tabIndex = -1;
