@@ -916,12 +916,14 @@ const Editor = (() => {
       capsulePrev = await w.innerSize().catch(() => null);
       await safe(() => tw.core.invoke('set_peeking', { on: true }), 'flag');
       await safe(() => w.setResizable(false), 'resizable-off');
+      await safe(() => w.setShadow(false), 'shadow-off');
       await safe(() => w.setMinSize(new LogicalSize(80, 24)), 'min');
       await safe(() => w.setSize(new LogicalSize(cw, ch)), 'size');
     } else {
       await safe(() => tw.core.invoke('set_peeking', { on: false }), 'flag-off');
       if (capsulePrev) await safe(() => w.setSize(new PhysicalSize(capsulePrev.width, capsulePrev.height)), 'restore');
       await safe(() => w.setMinSize(new LogicalSize(280, 200)), 'min-restore');
+      await safe(() => w.setShadow(true), 'shadow-on');
       await safe(() => w.setResizable(true), 'resizable-on');
       capsulePrev = null;
     }
