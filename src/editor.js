@@ -839,7 +839,7 @@ const Editor = (() => {
     e.dataTransfer.setData('text/plain', String(dragFrom));
     try { e.dataTransfer.setDragImage(row, 28, 12); } catch { /* 无自定义拖拽图时用默认 */ }
     row.classList.add('dragging');
-    unpeekNow();
+    expandCapsule();
   }
 
   function onDragOver(e) {
@@ -929,17 +929,13 @@ const Editor = (() => {
     if (document.querySelector('.modal-ov')) return;
     /* 只在「刚打完字」时拒绝收起：编辑器长期持有焦点并不代表正在输入 */
     if (Date.now() - lastEdit < 1500) return;
-    cancelUnpeek();
     peeked = true;
     updatePeekLine();
     document.body.classList.add('peeking');
     setTimeout(() => { if (peeked) applyCapsule(true); }, 0);
   }
 
-  /* 悬停 1 秒才展开：快速划过胶囊不会把它弹开，手指停稳才恢复 */
-  let peekTimer = null;
   let wakeTimer = null;
-  let capDrag = false;
 
   /* 展开瞬间光标还在原处，先屏蔽顶部标题栏与左缘热区，避免连带触发 */
   function wakeGuard() {
@@ -948,23 +944,7 @@ const Editor = (() => {
     wakeTimer = setTimeout(() => document.body.classList.remove('peek-wake'), 600);
   }
 
-  function scheduleUnpeek() {
-    if (!peeked || peekTimer || capDrag) return;
-    peekTimer = setTimeout(() => {
-      peekTimer = null;
-      if (peeked) unpeekNow();
-    }, 1000);
-  }
-
-  function cancelUnpeek() {
-    if (peekTimer) {
-      clearTimeout(peekTimer);
-      peekTimer = null;
-    }
-  }
-
-  function unpeekNow() {
-    cancelUnpeek();
+  function expandCapsule() {
     if (!peeked) return;
     peeked = false;
     document.body.classList.remove('peeking');
@@ -974,32 +954,35 @@ const Editor = (() => {
 
   function setAutoPeek(on) {
     autoPeek = !!on;
-    if (!autoPeek) unpeekNow();
+    if (!autoPeek) expandCapsule();
   }
 
-  document.documentElement.addEventListener('mouseleave', () => {
-    if (peeked) { cancelUnpeek(); return; }
-    peekNow();
-  });
-  document.documentElement.addEventListener('mouseenter', scheduleUnpeek);
-  /* 窗口缩小后光标可能一直停在里面，mouseenter 不会重发：用 pointermove 起算 */
-  document.addEventListener('pointermove', () => { if (peeked) scheduleUnpeek(); }, { passive: true });
-  document.addEventListener('focusin', unpeekNow);
-  window.addEventListener('focus', unpeekNow);
-  window.addEventListener('pointerup', () => { capDrag = false; });
+  document.documentElement.addEventListener('mouseleave', peekNow);
 
-  /* 胶囊按下即拖动，不触发展开 */
+  /* 胶囊：单击展开，按住拖动移动窗口；不使用任何计时器 */
   const peekEl = document.getElementById('peek-line');
+  let capPress = null;
   if (peekEl) {
     peekEl.addEventListener('pointerdown', (e) => {
       if (!peeked) return;
       e.preventDefault();
-      cancelUnpeek();
-      capDrag = true;
-      setTimeout(() => { capDrag = false; }, 2000);
-      const tw = window.__TAURI__;
-      if (tw && tw.window) tw.window.getCurrentWindow().startDragging().catch(() => {});
+      capPress = { x: e.clientX, y: e.clientY, dragged: false };
     });
+    window.addEventListener('pointermove', (e) => {
+      if (!capPress || capPress.dragged) return;
+      if (Math.hypot(e.clientX - capPress.x, e.clientY - capPress.y) > 4) {
+        capPress.dragged = true;
+        const tw = window.__TAURI__;
+        if (tw && tw.window) tw.window.getCurrentWindow().startDragging().catch(() => {});
+      }
+    });
+    window.addEventListener('pointerup', () => {
+      if (!capPress) return;
+      const dragged = capPress.dragged;
+      capPress = null;
+      if (!dragged) expandCapsule();
+    });
+    window.addEventListener('pointercancel', () => { capPress = null; });
   }
 
   /* ---------- 对外接口 ---------- */
