@@ -16,7 +16,6 @@ const Editor = (() => {
   let trayOpen = false;      // 已完成折叠区是否展开
   const settled = new Set(); // 已收进折叠区的任务 id
   const collapsed = new Set(); // 已折叠的父任务 id（仅视图状态，不落盘）
-  let autoPeek = false;      // 待机自动折叠开关
   let peeked = false;
   let lastEdit = 0;          // 最近一次输入时刻，用于判断是否正在打字
   let dragFrom = null;       // 拖拽起始行
@@ -736,6 +735,11 @@ const Editor = (() => {
 
   function showCtx(x, y) {
     ctx.textContent = '';
+    const fold = document.createElement('button');
+    fold.className = 'ctx-item';
+    fold.innerHTML = '折叠为胶囊<span class="ctx-cnt">单击展开 · 按住拖动</span>';
+    fold.addEventListener('click', () => { collapseToCapsule(); });
+    ctx.appendChild(fold);
     const opens = openTasks();
     const b = document.createElement('button');
     b.className = 'ctx-item' + (opens.length ? '' : ' disabled');
@@ -839,7 +843,6 @@ const Editor = (() => {
     e.dataTransfer.setData('text/plain', String(dragFrom));
     try { e.dataTransfer.setDragImage(row, 28, 12); } catch { /* 无自定义拖拽图时用默认 */ }
     row.classList.add('dragging');
-    expandCapsule();
   }
 
   function onDragOver(e) {
@@ -924,11 +927,12 @@ const Editor = (() => {
     }
   }
 
-  function peekNow() {
-    if (!autoPeek || peeked || dragFrom !== null) return;
+  /* 显式折叠：由右键菜单调用，不做任何鼠标嗅探 */
+  function collapseToCapsule() {
+    if (peeked) return;
     if (document.querySelector('.modal-ov')) return;
-    /* 只在「刚打完字」时拒绝收起：编辑器长期持有焦点并不代表正在输入 */
-    if (Date.now() - lastEdit < 1500) return;
+    closeCtx();
+    flush();
     peeked = true;
     updatePeekLine();
     document.body.classList.add('peeking');
@@ -951,13 +955,6 @@ const Editor = (() => {
     wakeGuard();
     applyCapsule(false);
   }
-
-  function setAutoPeek(on) {
-    autoPeek = !!on;
-    if (!autoPeek) expandCapsule();
-  }
-
-  document.documentElement.addEventListener('mouseleave', peekNow);
 
   /* 胶囊：单击展开，按住拖动移动窗口；不使用任何计时器 */
   const peekEl = document.getElementById('peek-line');
@@ -1029,5 +1026,5 @@ const Editor = (() => {
   window.addEventListener('beforeunload', () => { flush(); });
   document.addEventListener('visibilitychange', () => { if (document.hidden) flush(); });
 
-  return { boot, loadDay, flush, setAutoPeek };
+  return { boot, loadDay, flush, collapseToCapsule, expandCapsule };
 })();
