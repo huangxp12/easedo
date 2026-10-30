@@ -929,13 +929,33 @@ const Editor = (() => {
     if (document.querySelector('.modal-ov')) return;
     /* 只在「刚打完字」时拒绝收起：编辑器长期持有焦点并不代表正在输入 */
     if (Date.now() - lastEdit < 1500) return;
+    cancelUnpeek();
     peeked = true;
     updatePeekLine();
     document.body.classList.add('peeking');
     setTimeout(() => { if (peeked) applyCapsule(true); }, 0);
   }
 
+  /* 悬停 1 秒才展开：快速划过胶囊不会把它弹开，手指停稳才恢复 */
+  let peekTimer = null;
+
+  function scheduleUnpeek() {
+    if (!peeked || peekTimer) return;
+    peekTimer = setTimeout(() => {
+      peekTimer = null;
+      if (peeked) unpeekNow();
+    }, 1000);
+  }
+
+  function cancelUnpeek() {
+    if (peekTimer) {
+      clearTimeout(peekTimer);
+      peekTimer = null;
+    }
+  }
+
   function unpeekNow() {
+    cancelUnpeek();
     if (!peeked) return;
     peeked = false;
     document.body.classList.remove('peeking');
@@ -948,9 +968,21 @@ const Editor = (() => {
   }
 
   document.documentElement.addEventListener('mouseleave', peekNow);
-  document.documentElement.addEventListener('mouseenter', unpeekNow);
+  document.documentElement.addEventListener('mouseenter', scheduleUnpeek);
   document.addEventListener('focusin', unpeekNow);
   window.addEventListener('focus', unpeekNow);
+
+  /* 胶囊按下即拖动，不触发展开 */
+  const peekEl = document.getElementById('peek-line');
+  if (peekEl) {
+    peekEl.addEventListener('pointerdown', (e) => {
+      if (!peeked) return;
+      e.preventDefault();
+      cancelUnpeek();
+      const tw = window.__TAURI__;
+      if (tw && tw.window) tw.window.getCurrentWindow().startDragging().catch(() => {});
+    });
+  }
 
   /* ---------- 对外接口 ---------- */
 
