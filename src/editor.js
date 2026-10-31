@@ -889,6 +889,8 @@ const Editor = (() => {
     if (!p) return;
     const open = lines.filter(l => l.kind === 'todo' && l.state === 'open').length;
     p.textContent = open ? `${open} 项未完成` : '今天没有未完成';
+    /* 竖线颜色即状态：有未完成用暖橙，清空转绿 */
+    p.style.setProperty('--peek-accent', open ? '#f08c00' : '#1f9d61');
   }
 
   /* 窗口胶囊：收起到只放得下一行统计，滑回恢复原尺寸。浏览器预览下自动跳过。 */

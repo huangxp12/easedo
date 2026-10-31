@@ -39,7 +39,7 @@ function applyAppearance(s) {
   else root.dataset.theme = s.theme;
   root.style.setProperty('--editor-font', EDITOR_FONTS[s.font_family] || EDITOR_FONTS.default);
   root.style.setProperty('--editor-size', (s.font_size || 15) + 'px');
-  root.style.setProperty('--peek-border', (s.peek_border || 1) + 'px');
+  root.style.setProperty('--peek-border', (s.peek_border || 3) + 'px');
 }
 
 async function saveSetting(key, value, btn) {
@@ -124,7 +124,7 @@ function openSettingsModal(s) {
           <button class="switch" id="sw-frameless" aria-label="隐藏标题栏"></button>
         </div>
         <div class="set-line">
-          <div><div class="set-name">胶囊描边</div><div class="set-desc">折叠为胶囊时的内描边粗细</div></div>
+          <div><div class="set-name">胶囊色条</div><div class="set-desc">折叠后左侧状态竖线的宽度，有未完成时为暖橙，清空转绿</div></div>
           <div class="seg" id="set-peek-border">
             <button data-v="1">1 px</button>
             <button data-v="2">2 px</button>
@@ -195,7 +195,7 @@ function openSettingsModal(s) {
   /* ---- 胶囊描边 ---- */
   const borderSeg = ov.querySelector('#set-peek-border');
   const paintBorder = v => [...borderSeg.querySelectorAll('button')].forEach(b => b.classList.toggle('active', Number(b.dataset.v) === v));
-  let borderCur = s.peek_border || 1;
+  let borderCur = s.peek_border || 3;
   paintBorder(borderCur);
   borderSeg.addEventListener('click', async (e) => {
     const btn = e.target.closest('button');
