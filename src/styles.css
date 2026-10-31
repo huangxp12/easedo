@@ -18,7 +18,7 @@
   --mono: "Cascadia Mono", Consolas, "Sarasa Mono SC", monospace;
   --editor-font: "Segoe UI Variable Text", "Segoe UI", "Microsoft YaHei UI", "Microsoft YaHei", system-ui, sans-serif;
   --editor-size: 15px;
-  --peek-border: 3px;
+  --peek-border: 5px;
   --peek-accent: var(--accent);
 }
 /* 暗色色板：强制深色与跟随系统两路共用 */
@@ -160,7 +160,7 @@ body.peeking .peek-line {
   font-family: var(--mono); font-size: 12.5px; letter-spacing: 0.03em;
   cursor: grab; user-select: none;
   padding-left: calc(10px + var(--peek-border));
-  box-shadow: 0 2px 12px rgba(16, 24, 40, 0.18), 0 0 0 1px rgba(16, 24, 40, 0.04);
+  box-shadow: 0 2px 12px rgba(16, 24, 40, 0.18), 0 0 0 1px rgba(0, 0, 0, 0.06);
 }
 body.peeking .peek-line::before {
   content: ''; position: absolute; left: 0; top: 0; bottom: 0;

@@ -202,7 +202,7 @@ fn get_settings(state: State<AppState>) -> Result<serde_json::Value, String> {
         "font_size": s.get("font_size").and_then(|v| v.as_u64()).unwrap_or(15) as u32,
         "pin_top": s.get("pin_top").and_then(|v| v.as_bool()).unwrap_or(false),
         "auto_peek": s.get("auto_peek").and_then(|v| v.as_bool()).unwrap_or(false),
-        "peek_border": s.get("peek_border").and_then(|v| v.as_u64()).unwrap_or(3).clamp(1, 3),
+        "peek_border": s.get("peek_border").and_then(|v| v.as_u64()).unwrap_or(5).clamp(1, 10),
         "tray": s.get("tray").and_then(|v| v.as_bool()).unwrap_or(false),
         "autostart": store::autostart_enabled(),
         "data_dir": current_dir(&state).display().to_string(),

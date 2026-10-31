@@ -39,7 +39,7 @@ function applyAppearance(s) {
   else root.dataset.theme = s.theme;
   root.style.setProperty('--editor-font', EDITOR_FONTS[s.font_family] || EDITOR_FONTS.default);
   root.style.setProperty('--editor-size', (s.font_size || 15) + 'px');
-  root.style.setProperty('--peek-border', (s.peek_border || 3) + 'px');
+  root.style.setProperty('--peek-border', (s.peek_border || 5) + 'px');
 }
 
 async function saveSetting(key, value, btn) {
@@ -124,12 +124,8 @@ function openSettingsModal(s) {
           <button class="switch" id="sw-frameless" aria-label="隐藏标题栏"></button>
         </div>
         <div class="set-line">
-          <div><div class="set-name">胶囊色条</div><div class="set-desc">折叠后左侧状态竖线的宽度，有未完成时为暖橙，清空转绿</div></div>
-          <div class="seg" id="set-peek-border">
-            <button data-v="1">1 px</button>
-            <button data-v="2">2 px</button>
-            <button data-v="3">3 px</button>
-          </div>
+          <div><div class="set-name">胶囊色条 <span class="size-val" id="peek-val"></span></div><div class="set-desc">折叠后左侧状态竖线的宽度，有未完成时为暖橙，清空转绿</div></div>
+          <input class="size-range" id="set-peek-width" type="range" min="1" max="10" step="1" />
         </div>
         <div class="set-line">
           <div><div class="set-name">托盘常驻</div><div class="set-desc">点关闭时缩到系统托盘，点击托盘图标恢复</div></div>
@@ -192,22 +188,24 @@ function openSettingsModal(s) {
   });
   sizeInput.addEventListener('change', () => saveSetting('font_size', s.font_size));
 
-  /* ---- 胶囊描边 ---- */
-  const borderSeg = ov.querySelector('#set-peek-border');
-  const paintBorder = v => [...borderSeg.querySelectorAll('button')].forEach(b => b.classList.toggle('active', Number(b.dataset.v) === v));
-  let borderCur = s.peek_border || 3;
-  paintBorder(borderCur);
-  borderSeg.addEventListener('click', async (e) => {
-    const btn = e.target.closest('button');
-    if (!btn) return;
-    const v = Number(btn.dataset.v);
-    if (v === borderCur) return;
-    const prev = borderCur;
-    borderCur = v;
-    s.peek_border = v;
-    paintBorder(v);
+  /* ---- 胶囊色条 ---- */
+  const peekInput = ov.querySelector('#set-peek-width');
+  const peekVal = ov.querySelector('#peek-val');
+  let peekCur = s.peek_border || 5;
+  peekInput.value = peekCur;
+  peekVal.textContent = peekCur + ' px';
+  peekInput.addEventListener('input', () => {
+    peekCur = Number(peekInput.value);
+    s.peek_border = peekCur;
+    peekVal.textContent = peekCur + ' px';
     applyAppearance(s);
-    if (!(await saveSetting('peek_border', v))) { borderCur = prev; s.peek_border = prev; paintBorder(prev); applyAppearance(s); }
+  });
+  peekInput.addEventListener('change', async () => {
+    const prev = s.peek_border;
+    if (!(await saveSetting('peek_border', peekCur))) {
+      peekCur = prev; s.peek_border = prev; peekInput.value = prev;
+      peekVal.textContent = prev + ' px'; applyAppearance(s);
+    }
   });
 
   /* ---- 开关 ---- */
