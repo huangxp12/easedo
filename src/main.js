@@ -39,6 +39,7 @@ function applyAppearance(s) {
   else root.dataset.theme = s.theme;
   root.style.setProperty('--editor-font', EDITOR_FONTS[s.font_family] || EDITOR_FONTS.default);
   root.style.setProperty('--editor-size', (s.font_size || 15) + 'px');
+  root.style.setProperty('--peek-border', (s.peek_border || 1) + 'px');
 }
 
 async function saveSetting(key, value, btn) {
@@ -123,6 +124,14 @@ function openSettingsModal(s) {
           <button class="switch" id="sw-frameless" aria-label="隐藏标题栏"></button>
         </div>
         <div class="set-line">
+          <div><div class="set-name">胶囊描边</div><div class="set-desc">折叠为胶囊时的内描边粗细</div></div>
+          <div class="seg" id="set-peek-border">
+            <button data-v="1">1 px</button>
+            <button data-v="2">2 px</button>
+            <button data-v="3">3 px</button>
+          </div>
+        </div>
+        <div class="set-line">
           <div><div class="set-name">托盘常驻</div><div class="set-desc">点关闭时缩到系统托盘，点击托盘图标恢复</div></div>
           <button class="switch" id="sw-tray" aria-label="托盘常驻"></button>
         </div>
@@ -182,6 +191,24 @@ function openSettingsModal(s) {
     applyAppearance(s);
   });
   sizeInput.addEventListener('change', () => saveSetting('font_size', s.font_size));
+
+  /* ---- 胶囊描边 ---- */
+  const borderSeg = ov.querySelector('#set-peek-border');
+  const paintBorder = v => [...borderSeg.querySelectorAll('button')].forEach(b => b.classList.toggle('active', Number(b.dataset.v) === v));
+  let borderCur = s.peek_border || 1;
+  paintBorder(borderCur);
+  borderSeg.addEventListener('click', async (e) => {
+    const btn = e.target.closest('button');
+    if (!btn) return;
+    const v = Number(btn.dataset.v);
+    if (v === borderCur) return;
+    const prev = borderCur;
+    borderCur = v;
+    s.peek_border = v;
+    paintBorder(v);
+    applyAppearance(s);
+    if (!(await saveSetting('peek_border', v))) { borderCur = prev; s.peek_border = prev; paintBorder(prev); applyAppearance(s); }
+  });
 
   /* ---- 开关 ---- */
   function bindSwitch(id, key, label, def = false) {
