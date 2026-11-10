@@ -19,6 +19,7 @@ const Editor = (() => {
   let peeked = false;
   let lastEdit = 0;          // 最近一次输入时刻，用于判断是否正在打字
   let dragFrom = null;       // 拖拽起始行
+  let dropRow = null;        // 最近一次 dragover 命中的行
 
   const norm = s => (s || '').replace(/\u00a0/g, ' ').replace(/\s+/g, ' ').trim();
 
@@ -845,22 +846,35 @@ const Editor = (() => {
     row.classList.add('dragging');
   }
 
+  function rowAtPoint(y) {
+    const list = [...el.querySelectorAll('.line')];
+    return list.find(r => {
+      const b = r.getBoundingClientRect();
+      return y >= b.top && y <= b.bottom;
+    }) || null;
+  }
+
   function onDragOver(e) {
     if (dragFrom === null) return;
-    const row = e.target.closest('.line');
-    if (!row) return;
+    /* 可编辑区域会先吃掉 dragover，必须在捕获阶段拦截，否则浏览器判定「不可放置」 */
     e.preventDefault();
+    e.stopPropagation();
     e.dataTransfer.dropEffect = 'move';
+    const row = (e.target.closest && e.target.closest('.line')) || rowAtPoint(e.clientY);
+    dropRow = row;
+    clearDropMarks();
+    if (!row) return;
     const r = row.getBoundingClientRect();
     const after = e.clientY > r.top + r.height / 2;
-    clearDropMarks();
     row.classList.add(after ? 'drop-after' : 'drop-before');
   }
 
   function onDrop(e) {
     if (dragFrom === null) return;
     e.preventDefault();
-    const row = e.target.closest('.line');
+    e.stopPropagation();
+    const row = (e.target.closest && e.target.closest('.line')) || dropRow || rowAtPoint(e.clientY);
+    dropRow = null;
     const s = dragFrom;
     const end = subtreeEnd(s);
     dragFrom = null;
@@ -1020,8 +1034,9 @@ const Editor = (() => {
   el.addEventListener('paste', onPaste);
   el.addEventListener('click', onClick);
   el.addEventListener('dragstart', onDragStart);
-  el.addEventListener('dragover', onDragOver);
-  el.addEventListener('drop', onDrop);
+  /* 捕获阶段统一在 document 上处理：可编辑区域会先吃掉 dragover，冒泡到不了容器 */
+  document.addEventListener('dragover', onDragOver, true);
+  document.addEventListener('drop', onDrop, true);
   el.addEventListener('dragend', onDragEnd);
   el.addEventListener('contextmenu', e => {
     e.preventDefault();
